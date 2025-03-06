@@ -199,7 +199,7 @@ display_logo() {
     
     echo -e "${YELLOW_BG}"
     echo -e "                                         ${BOLD_PURPLE} {´◕ ◡ ◕｀}                                               "
-    echo -e "                                  ${BOLD_PURPLE}[ DiffuGen Setup Utility ]                                        "
+    echo -e "                                  ${BOLD_PURPLE}[ DiffuGen Setup Utility ]                                       "
     echo -e "${NC}"
     # Display the ANSI art logo centered
     # Calculate terminal width for centering
@@ -218,9 +218,9 @@ display_logo() {
     fi
     
 echo -e "${BOLD_PURPLE}"   
-            echo  "              ______ ________________ _______            _______ _______ _       "
+            echo  "              ______ ________________ _______          _______________       "
             sleep 0.1
-            echo "              (  __  \\__   __(  ____ (  ____ \\      /(  ____ (  ____ ( (    /|"
+            echo "              (  __  \\__   __(  ____ (  ____ \\       /( ____ (  ____ ( (     /|"
             sleep 0.1
             echo -e "${YELLOW}              | (  \  )  ) (  | (    \/ (    \/ )   ( | (    \/ (    \/  \  ( |"
             echo "              | |   ) |  | |  | (__   | (__   | |   | | |     | (__   |   \ | |"
@@ -238,6 +238,7 @@ echo -e "${BOLD_PURPLE}"
     
    box "Advanced Stable Diffusion Image Generator Designed For MCP Tool Usage & CLI Image Generation" "BOLD_PURPLE"
    animate_text "Made with ❤️  by CLOUDWERX LAB - VIsit us at http://cloudwerx.dev | http://github.com/CLOUDWERX-DEV" "BOLD_YELLOW"
+
 echo -e  -------------------------------  "${BOLD_CYAN}\"${BOLD_GREEN}Digital Food "${WHITE}"for the ${BOLD_PURPLE}Analog Soul${BOLD_CYAN}\"${NC}"  -------------------------------
     echo
     
