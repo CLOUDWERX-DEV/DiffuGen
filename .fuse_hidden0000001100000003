@@ -6,9 +6,27 @@
 # http://cloudwerx.dev
 # !! Open-Source !!
 
-# Global variables for tracking downloads
-current_model_name=""
-current_download_file=""
+# Parse command line arguments
+INTERACTIVE_MODE=true  # Default to interactive mode
+for arg in "$@"; do
+    case $arg in
+        --non-interactive)
+            INTERACTIVE_MODE=false
+            shift
+            ;;
+        --help)
+            echo "Usage: $0 [OPTIONS]"
+            echo
+            echo "Options:"
+            echo "  --non-interactive    Run script without interactive prompts (uses defaults)"
+            echo "  --help               Show this help message"
+            exit 0
+            ;;
+    esac
+done
+
+# Enable better error handling
+set -o pipefail
 
 # Enhanced color definitions
 RED='\033[0;31m'
@@ -31,6 +49,105 @@ BLUE_BG='\033[44m'
 PURPLE_BG='\033[45m'
 CYAN_BG='\033[46m'
 NC='\033[0m' # No Color
+
+# Global variables for tracking state
+DOWNLOAD_IN_PROGRESS=false
+CURRENT_TEMP_FILE=""
+ORIGINAL_TRAP_CMD=""
+USER_PROMPT_INTERRUPTED=false
+
+# Track if we're in a critical section
+IN_CRITICAL_SECTION=false
+CURRENT_SECTION=""
+
+# Signal handling functions
+handle_exit() {
+    # Final cleanup before exiting
+    tput cnorm >/dev/null 2>&1 || true  # Restore cursor
+    echo -e "\n${BOLD_YELLOW}Exiting DiffuGen setup.${NC}"
+    exit 0
+}
+
+handle_interrupt() {
+    # Reset terminal state
+    tput cnorm >/dev/null 2>&1 || true  # Show cursor
+    
+    # If we're in a critical section, handle it specially
+    if [ "$IN_CRITICAL_SECTION" = true ]; then
+        echo -e "\n${BOLD_YELLOW}Operation interrupted: ${CURRENT_SECTION}${NC}"
+        
+        # Special handling for user prompts
+        if [[ "$CURRENT_SECTION" == *"user prompt"* ]]; then
+            echo -e "${BOLD_YELLOW}Skipping current step and continuing with default option...${NC}"
+            # Set a flag for the function to detect the interrupt
+            USER_PROMPT_INTERRUPTED=true
+            return 0  # Don't exit, let the calling function handle it
+        fi
+        
+        # Special handling for build process
+        if [[ "$CURRENT_SECTION" == *"Building"* ]]; then
+            echo -e "${BOLD_YELLOW}Build process interrupted. This is safe to cancel.${NC}"
+            echo -e "${BOLD_GREEN}Continuing with script execution...${NC}"
+            # No need for full cleanup, just exit the current section
+            exit_critical_section
+            return 1  # Signal error but don't exit script
+        fi
+        
+        echo -e "${BOLD_YELLOW}Performing safe cleanup...${NC}"
+    fi
+    
+    # Handle download interruptions specially
+    if [ "$DOWNLOAD_IN_PROGRESS" = true ]; then
+        cleanup "Download interrupted by user" "download-only"
+    else
+        # General interruption - ask if user wants to exit or continue
+        echo -e "\n${BOLD_YELLOW}Operation interrupted by user.${NC}"
+        
+        # If we're in script initialization, don't show the prompt
+        if [[ "$CURRENT_SECTION" == "" ]]; then
+            cleanup "Script interrupted by user" "minimal"
+            echo -e "${BOLD_YELLOW}Exiting DiffuGen setup.${NC}"
+            exit 0
+        fi
+        
+        # Ask user if they want to exit or continue
+        read -p "$(echo -e ${BOLD_YELLOW}Do you want to exit completely? \(y/n\)${NC} )" -n 1 -r
+        echo
+        
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            cleanup "Script interrupted by user" "full"
+        else
+            echo -e "${BOLD_GREEN}Continuing with the rest of the setup...${NC}"
+            return 1  # Return error but don't exit
+        fi
+    fi
+}
+
+# Set up trap handlers
+trap handle_exit EXIT
+trap handle_interrupt INT TERM
+
+# Function to enter a critical section of code
+enter_critical_section() {
+    CURRENT_SECTION="$1"
+    IN_CRITICAL_SECTION=true
+    echo -e "${BOLD_BLUE}Starting: $CURRENT_SECTION${NC}"
+}
+
+# Function to exit a critical section of code
+exit_critical_section() {
+    local status=$?
+    IN_CRITICAL_SECTION=false
+    CURRENT_SECTION=""
+    
+    if [ $status -eq 0 ]; then
+        echo -e "${BOLD_GREEN}Completed successfully.${NC}"
+    else
+        echo -e "${BOLD_RED}Failed with status: $status${NC}"
+    fi
+    
+    return $status
+}
 
 # Function for animated text
 animate_text() {
@@ -137,8 +254,8 @@ box() {
 display_logo() {
     clear
     echo
-    animate_text "Loading DiffuGen Setup..." "BOLD_CYAN"
-    progress_bar 2 20 "Initializing..."
+    echo -e "${BOLD_CYAN}Loading DiffuGen Setup...${NC}"
+    sleep 0.5  # Reduced from progress_bar 2 20
     clear
     
     echo -e "${PURPLE_BG}${WHITE}"
@@ -149,34 +266,27 @@ display_logo() {
     
     echo -e "${BOLD_PURPLE}"   
     echo  " ______ ________________ _______         _______ _______ _       "
-    sleep 0.1
     echo " (  __  \\__   __(  ____ (  ____ \\     /(  ____ (  ____ ( (    /|"
-    sleep 0.1
     echo " | (  \  )  ) (  | (    \/ (    \/ )   ( | (    \/ (    \/  \  ( |"
-    sleep 0.1
     echo " | |   ) |  | |  | (__   | (__   | |   | | |     | (__   |   \ | |"
-    sleep 0.1
     echo " | |   | |  | |  |  __)  |  __)  | |   | | | ____|  __)  | (\ \) |"
-    sleep 0.1
     echo " | |   ) |  | |  | (     | (     | |   | | | \_  ) (     | | \   |"
-    sleep 0.1
     echo " | (__/  )__) (__| )     | )     | (___) | (___) | (____/\ )  \  |"
-    sleep 0.1
     echo " (______/\_______//      |/      (_______|_______|_______//    )_)"
     echo -e "${NC}"
     
     box "Advanced Stable Diffusion Image Generator" "BOLD_CYAN"
-    animate_text "Made with ❤️  by CLOUDWERX LAB" "BOLD_YELLOW"
+    echo -e "${BOLD_YELLOW}Made with ❤️  by CLOUDWERX LAB${NC}"
     echo -e "${BOLD_CYAN}\"${BOLD_GREEN}Digital Food for the ${BOLD_PURPLE}Analog Soul${BOLD_CYAN}\"${NC}"
     echo
     
-    # Draw a decorative line
-    echo -ne "${BOLD_BLUE}"
-    for ((i=0; i<80; i++)); do
-        echo -n "═"
-        sleep 0.005
-    done
-    echo -e "${NC}"
+    # Draw a decorative line (simplified)
+    echo -e "${BOLD_BLUE}════════════════════════════════════════════════════════════════════════${NC}"
+    echo
+    
+    # Add an explicit message about the interactive nature
+    echo -e "${BOLD_GREEN}This is an interactive setup script. You will be prompted for input at each step.${NC}"
+    echo -e "${BOLD_GREEN}Press Ctrl+C at any time to interrupt the current operation.${NC}"
     echo
 }
 
@@ -429,57 +539,153 @@ wsl_setup() {
 
 # Function to clean up on failure with enhanced visuals
 cleanup() {
+    local error_message="$1"
+    local was_downloading=$DOWNLOAD_IN_PROGRESS
+    local temp_file=$CURRENT_TEMP_FILE
+    local cleanup_type="${2:-full}"  # Can be 'full', 'minimal', or 'download-only'
+    
+    # Reset download tracking
+    DOWNLOAD_IN_PROGRESS=false
+    CURRENT_TEMP_FILE=""
+    
     echo
     print_color "RED_BG" "                                                " ""
     print_color "RED_BG" "  ⚠️  ERROR OCCURRED - STARTING CLEANUP PROCESS  " ""
     print_color "RED_BG" "                                                " ""
     echo
     
-    if [ -n "$1" ]; then
-        print_color "BOLD_RED" "Error message: $1" "error"
+    if [ -n "$error_message" ]; then
+        print_color "BOLD_RED" "Error message: $error_message" "error"
     fi
     
     echo
     
-    # If we have a current download in progress, only remove that file
-    if [ -n "$current_download_file" ] && [ -n "$current_model_name" ]; then
-        print_color "BOLD_YELLOW" "Download of '$current_model_name' was interrupted." "warning"
-        if [ -f "$current_download_file" ]; then
-            read -p "$(echo -e ${BOLD_YELLOW}Remove the incomplete download file? \(y/n\)${NC} )" -n 1 -r
+    # Handle interrupted downloads specially
+    if [ "$was_downloading" = true ] && [ -n "$temp_file" ] && [ -f "$temp_file" ]; then
+        print_color "YELLOW" "Detected interrupted download." "warning"
+        print_color "YELLOW" "Temporary file: $temp_file" "info"
+        
+        read -p "$(echo -e ${BOLD_YELLOW}Would you like to remove the unfinished download file? \(y/n\)${NC} )" -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
             echo
-            if [[ $REPLY =~ ^[Yy]$ ]]; then
-                echo
-                print_color "YELLOW" "Removing incomplete download: $current_download_file" "info"
-                rm -f "$current_download_file" 
-                print_color "BOLD_GREEN" "Incomplete download file removed." "success"
+            print_color "YELLOW" "Removing temporary download file..." "info"
+            if rm -f "$temp_file"; then
+                print_color "BOLD_GREEN" "Temporary file removed successfully." "success"
             else
-                print_color "YELLOW" "Keeping incomplete download file." "info"
+                print_color "BOLD_RED" "Failed to remove temporary file." "error"
             fi
         else
-            print_color "YELLOW" "No download file found to clean up." "info"
+            print_color "YELLOW" "Keeping temporary download file." "info"
         fi
-    else
-        # More general cleanup for other types of failures
-        read -p "$(echo -e ${BOLD_YELLOW}Would you like to remove partially installed files? \(y/n\)${NC} )" -n 1 -r
+        
         echo
-        if [[ $REPLY =~ ^[Yy]$ ]]; then
-            echo
-            # Only offer to remove temporary files and virtual environments, NOT built files
-            if [ -d "diffugen_env" ]; then
-                print_color "YELLOW" "Removing Python virtual environment..." "info"
-                rm -rf diffugen_env &
-                spinner $!
-            fi
-            
-            # Remove any temporary download files, but NOT the build directory
-            print_color "YELLOW" "Removing temporary download files..." "info"
-            rm -f /tmp/diffugen_download_*.part &
-            spinner $!
-            
-            print_color "BOLD_GREEN" "Cleanup completed successfully." "success"
-        else
-            print_color "YELLOW" "Skipping cleanup as requested." "info"
+        print_color "YELLOW" "You can restart the download process to try again." "info"
+        echo
+        
+        # For download-only interruptions, we might want to continue the script
+        if [ "$cleanup_type" = "download-only" ]; then
+            print_color "YELLOW" "Continuing with the rest of the setup..." "info"
+            return 0
         fi
+        
+        # Restore original trap if possible
+        if [ -n "$ORIGINAL_TRAP_CMD" ]; then
+            eval "$ORIGINAL_TRAP_CMD"
+        fi
+        
+        exit 1
+    fi
+    
+    # For minimal cleanup (used after user prompt interruptions), just return
+    if [ "$cleanup_type" = "minimal" ]; then
+        print_color "YELLOW" "Continuing with script execution..." "info"
+        return 0
+    fi
+    
+    # Regular cleanup process for non-download interruptions
+    print_color "YELLOW" "The following actions will be performed:" "warning"
+    echo
+    
+    local cleanup_list=()
+    local cleanup_descriptions=()
+    
+    # Check for Python virtual environment
+        if [ -d "diffugen_env" ]; then
+        cleanup_list+=("diffugen_env")
+        cleanup_descriptions+=("Remove Python virtual environment")
+    fi
+    
+    # Check for temporary download files
+    local temp_files=$(find /tmp -name "diffugen_download_*.part" 2>/dev/null)
+    if [ -n "$temp_files" ]; then
+        cleanup_list+=("temp_files")
+        cleanup_descriptions+=("Remove temporary download files")
+    fi
+    
+    # If build directory exists, mention we'll preserve it
+        if [ -d "stable-diffusion.cpp/build" ]; then
+        print_color "BOLD_CYAN" "• ${WHITE}PRESERVE: stable-diffusion.cpp/build directory with compiled files${NC}"
+    fi
+    
+    # Display what will be cleaned up
+    local show_prompt=false
+    for i in "${!cleanup_list[@]}"; do
+        print_color "BOLD_YELLOW" "• ${WHITE}${cleanup_descriptions[$i]}${NC}"
+        show_prompt=true
+    done
+    
+    # If nothing to clean up
+    if [ "$show_prompt" = false ]; then
+        print_color "BOLD_GREEN" "No files need to be cleaned up." "success"
+        
+        echo
+        print_color "YELLOW" "Please fix the issues and try again." "warning"
+        echo
+        print_color "BOLD_BLUE" "For help, visit: https://github.com/CLOUDWERX-DEV/diffugen/issues" "info"
+        echo
+        
+        # Restore original trap if possible
+        if [ -n "$ORIGINAL_TRAP_CMD" ]; then
+            eval "$ORIGINAL_TRAP_CMD"
+        fi
+        
+        exit 1
+    fi
+    
+    # Ask for confirmation
+    echo
+    read -p "$(echo -e ${BOLD_YELLOW}Proceed with cleanup? \(y/n\)${NC} )" -n 1 -r
+    echo
+    
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        echo
+        
+        # Perform cleanup operations
+        for i in "${!cleanup_list[@]}"; do
+            case "${cleanup_list[$i]}" in
+                "diffugen_env")
+                    print_color "YELLOW" "Removing Python virtual environment..." "info"
+                    if rm -rf diffugen_env; then
+                        print_color "BOLD_GREEN" "Virtual environment removed." "success"
+                    else
+                        print_color "BOLD_RED" "Failed to remove virtual environment." "error"
+                    fi
+                    ;;
+                "temp_files")
+                    print_color "YELLOW" "Removing temporary download files..." "info"
+                    if find /tmp -name "diffugen_download_*.part" -delete 2>/dev/null; then
+                        print_color "BOLD_GREEN" "Temporary files removed." "success"
+                    else
+                        print_color "BOLD_RED" "Failed to remove some temporary files." "error"
+                    fi
+                    ;;
+            esac
+        done
+        
+        print_color "BOLD_GREEN" "Cleanup completed." "success"
+    else
+        print_color "YELLOW" "Skipping cleanup as requested." "info"
     fi
     
     echo
@@ -487,22 +693,114 @@ cleanup() {
     echo
     print_color "BOLD_BLUE" "For help, visit: https://github.com/CLOUDWERX-DEV/diffugen/issues" "info"
     echo
+    
+    # Restore original trap if possible
+    if [ -n "$ORIGINAL_TRAP_CMD" ]; then
+        eval "$ORIGINAL_TRAP_CMD"
+    fi
+    
     exit 1
 }
 
-# Error handling wrapper with enhanced visuals
+# Enhanced error handling wrapper with critical section
 run_with_error_handling() {
-    local cmd_description=$1
+    local cmd_description="$1"
     shift
     
     echo
     print_color "BOLD_BLUE" "Starting: $cmd_description" "header"
     
+    # Enter critical section
+    enter_critical_section "$cmd_description"
+    
+    # Run the command
     if ! "$@"; then
+        exit_critical_section
         cleanup "Failed during: $cmd_description"
+        return 1
     fi
     
+    # Exit critical section
+    exit_critical_section
+    
     print_color "BOLD_GREEN" "Completed: $cmd_description" "success"
+    return 0
+}
+
+# Function to create directory with error handling
+create_directory() {
+    local dir_path="$1"
+    local description="${2:-directory}"
+    
+    if [ -d "$dir_path" ]; then
+        return 0  # Directory already exists
+    fi
+    
+    print_color "YELLOW" "Creating $description: $dir_path" "info"
+    
+    if ! mkdir -p "$dir_path"; then
+        print_color "BOLD_RED" "Failed to create $description: $dir_path" "error"
+        print_color "BOLD_RED" "Please check permissions and try again." "error"
+        return 1
+    fi
+    
+    # Set directory permissions
+    if ! chmod 775 "$dir_path"; then
+        print_color "YELLOW" "Warning: Could not set permissions on $dir_path" "warning"
+        print_color "YELLOW" "This may cause issues later." "warning"
+    fi
+    
+    print_color "GREEN" "$description created successfully" "success"
+    return 0
+}
+
+# Function to safely move files with error handling
+move_file() {
+    local source="$1"
+    local destination="$2"
+    local description="${3:-file}"
+    
+    if [ ! -f "$source" ]; then
+        print_color "BOLD_RED" "Source $description not found: $source" "error"
+        return 1
+    fi
+    
+    # Create destination directory if it doesn't exist
+    local dest_dir=$(dirname "$destination")
+    if [ ! -d "$dest_dir" ]; then
+        if ! create_directory "$dest_dir" "destination directory"; then
+            return 1
+        fi
+    fi
+    
+    print_color "CYAN" "Moving $description to: $destination" "info"
+    
+    # Try to move the file
+    if ! mv "$source" "$destination"; then
+        print_color "YELLOW" "Move failed, trying copy method..." "warning"
+        
+        if ! cp "$source" "$destination"; then
+            print_color "BOLD_RED" "Failed to copy $description to destination" "error"
+            return 1
+        fi
+        
+        # Remove source after successful copy
+        rm -f "$source"
+    fi
+    
+    # Check that destination file exists and set permissions
+    if [ ! -f "$destination" ]; then
+        print_color "BOLD_RED" "Failed to move $description: Destination file not found" "error"
+        return 1
+    fi
+    
+    # Set file permissions
+    if ! chmod 664 "$destination"; then
+        print_color "YELLOW" "Warning: Could not set permissions on $destination" "warning"
+    fi
+    
+    print_color "GREEN" "$description moved successfully" "success"
+    return 0
 }
 
 # Function to clone or update stable-diffusion.cpp with enhanced visuals
@@ -523,8 +821,11 @@ setup_stable_diffusion_cpp() {
         print_color "BLUE" "Cloning stable-diffusion.cpp..." "info"
         echo -e "${BOLD_CYAN}This may take a few minutes depending on your internet connection.${NC}"
         echo
-        git clone --recursive https://github.com/leejet/stable-diffusion.cpp &
-        spinner $!
+        
+        if ! git clone --recursive https://github.com/leejet/stable-diffusion.cpp; then
+            print_color "BOLD_RED" "Failed to clone repository. Check your internet connection." "error"
+            return 1
+        fi
         
         if [ -d "stable-diffusion.cpp" ]; then
             print_color "BOLD_GREEN" "Repository cloned successfully!" "success"
@@ -538,9 +839,23 @@ setup_stable_diffusion_cpp() {
 
 # Function to build stable-diffusion.cpp
 build_stable_diffusion_cpp() {
-    cd stable-diffusion.cpp || return 1
+    if ! cd stable-diffusion.cpp; then
+        print_color "BOLD_RED" "Failed to change to stable-diffusion.cpp directory" "error"
+        return 1
+    fi
+    
     print_color "BLUE" "Building stable-diffusion.cpp..." "subheader"
-    mkdir -p build && cd build || return 1
+    
+    if ! create_directory "build" "build directory"; then
+        cd ..
+        return 1
+    fi
+    
+    if ! cd build; then
+        print_color "BOLD_RED" "Failed to change to build directory" "error"
+        cd ../..
+        return 1
+    fi
     
     # Check if CUDA is available
     local cuda_available=false
@@ -568,8 +883,27 @@ build_stable_diffusion_cpp() {
     echo -e "│ ${WHITE}CUDA Configuration${BOLD_CYAN}                                       │"
     echo -e "└─────────────────────────────────────────────────────────┘${NC}"
     echo
+    
+    # Set flag for prompt interruption handling
+    USER_PROMPT_INTERRUPTED=false
+    
+    # Enter a special critical section for user prompt
+    CURRENT_SECTION="CUDA configuration user prompt"
+    IN_CRITICAL_SECTION=true
+    
     read -p "$(echo -e ${BOLD_GREEN}Build Stable-Diffusion.cpp with CUDA support? \(y/n\)${NC} )" -n 1 -r
     echo
+    
+    # Check if the prompt was interrupted
+    if [ "$USER_PROMPT_INTERRUPTED" = true ]; then
+        print_color "YELLOW" "CUDA configuration interrupted. Defaulting to non-CUDA build." "warning"
+        REPLY="n"  # Default to no
+        USER_PROMPT_INTERRUPTED=false
+    fi
+    
+    # Exit the special critical section
+    IN_CRITICAL_SECTION=false
+    CURRENT_SECTION=""
     
     if [[ $REPLY =~ ^[Yy]$ ]]; then
         if [ "$cuda_available" = false ]; then
@@ -584,8 +918,26 @@ build_stable_diffusion_cpp() {
             echo -e "${BOLD_CYAN}  3. ${WHITE}Set CUDACXX environment variable to point to nvcc${NC}"
             echo -e "${BOLD_CYAN}  4. ${WHITE}Try building without CUDA support instead${NC}"
             echo
+            
+            # Enter a special critical section for user prompt
+            CURRENT_SECTION="CUDA build confirmation user prompt"
+            IN_CRITICAL_SECTION=true
+            USER_PROMPT_INTERRUPTED=false
+            
             read -p "$(echo -e ${BOLD_YELLOW}Continue with CUDA build attempt? \(y/n\)${NC} )" -n 1 -r
             echo
+            
+            # Check if the prompt was interrupted
+            if [ "$USER_PROMPT_INTERRUPTED" = true ]; then
+                print_color "YELLOW" "CUDA build confirmation interrupted. Defaulting to non-CUDA build." "warning"
+                REPLY="n"  # Default to no
+                USER_PROMPT_INTERRUPTED=false
+            fi
+            
+            # Exit the special critical section
+            IN_CRITICAL_SECTION=false
+            CURRENT_SECTION=""
+            
             if [[ ! $REPLY =~ ^[Yy]$ ]]; then
                 print_color "BLUE" "Switching to non-CUDA build..." "info"
                 
@@ -790,6 +1142,128 @@ update_file_paths() {
     return 0
 }
 
+# Function to handle downloads with proper progress display
+download_file() {
+    local url="$1"
+    local dest_path="$2"
+    local name="$3"
+    local max_retries="${4:-3}"
+    
+    # Enter critical section
+    enter_critical_section "Downloading $name"
+    
+    # Debug info
+    echo -e "${BOLD_CYAN}Downloading: ${WHITE}$name${NC}"
+    echo -e "${BOLD_CYAN}Source: ${WHITE}$url${NC}"
+    echo -e "${BOLD_CYAN}Destination: ${WHITE}$dest_path${NC}"
+    
+    # Create parent directory if it doesn't exist
+    local parent_dir=$(dirname "$dest_path")
+    if ! create_directory "$parent_dir" "model directory"; then
+        exit_critical_section
+        return 1
+    fi
+    
+    # Prepare download
+    local retry_count=0
+    local download_success=false
+    
+    while [ $retry_count -lt $max_retries ] && [ "$download_success" = false ]; do
+        # Clear previous attempt messages if retrying
+        if [ $retry_count -gt 0 ]; then
+            echo -e "${BOLD_YELLOW}Retry attempt $retry_count of $max_retries...${NC}"
+            sleep 1
+        fi
+        
+        # Create a temporary file with a unique and more secure name
+        local temp_file="/tmp/diffugen_download_$(date +%s)_$$.part"
+        
+        # Set globals for tracking download state
+        DOWNLOAD_IN_PROGRESS=true
+        CURRENT_TEMP_FILE="$temp_file"
+        
+        # Create a visual separator for the download progress
+        echo -e "\n${BOLD_BLUE}┌────────────────────────────────────────────────────────┐"
+        echo -e "│ ${WHITE}Download Progress${BOLD_BLUE}                                  │"
+        echo -e "└────────────────────────────────────────────────────────┘${NC}"
+        
+        # Wait for terminal to be ready
+        sleep 0.5
+        
+        # Save terminal state
+        tput smcup >/dev/null 2>&1 || true  # Ignore errors on terminals that don't support this
+        
+        # Hide cursor for cleaner appearance
+        tput civis >/dev/null 2>&1 || true  # Ignore errors on terminals that don't support this
+        
+        # Show download message
+        echo -e "${BOLD_YELLOW}Downloading...${NC}"
+        
+        # Download with progress bar
+        curl -L "$url" -o "$temp_file" \
+            --progress-bar \
+            --retry 2 \
+            --retry-delay 3 \
+            --connect-timeout 30 \
+            --max-time 3600
+        
+        local curl_status=$?
+        
+        # Restore terminal state
+        tput rmcup >/dev/null 2>&1 || true  # Ignore errors on terminals that don't support this
+        tput cnorm >/dev/null 2>&1 || true  # Ignore errors on terminals that don't support this
+        
+        # Reset globals after download attempt
+        DOWNLOAD_IN_PROGRESS=false
+        CURRENT_TEMP_FILE=""
+        
+        # Handle download result
+        if [ $curl_status -eq 0 ] && [ -f "$temp_file" ]; then
+            # Get file size and verify it's not empty
+            local file_size=$(du -h "$temp_file" | cut -f1)
+            local file_bytes=$(stat -c %s "$temp_file" 2>/dev/null || stat -f %z "$temp_file" 2>/dev/null)
+            
+            if [ "$file_bytes" -lt 1000 ]; then
+                echo -e "${BOLD_RED}Warning: Downloaded file is very small ($file_bytes bytes). This may indicate a problem.${NC}"
+                read -p "$(echo -e ${BOLD_YELLOW}Continue anyway? \(y/n\)${NC} )" -n 1 -r
+                echo
+                if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+                    rm -f "$temp_file"
+                    echo -e "${BOLD_YELLOW}Download canceled. File removed.${NC}"
+                    exit_critical_section
+                    return 1
+                fi
+            fi
+            
+            # Move file to destination using our helper function
+            if move_file "$temp_file" "$dest_path" "model file"; then
+                echo -e "${BOLD_GREEN}✅ Download complete: ${WHITE}$name ${BOLD_GREEN}(${CYAN}$file_size${BOLD_GREEN})${NC}"
+                echo -e "${BOLD_WHITE}File saved to: ${CYAN}$dest_path${NC}"
+                download_success=true
+            else
+                echo -e "${BOLD_RED}Failed to save file to destination.${NC}"
+                rm -f "$temp_file"
+                retry_count=$((retry_count + 1))
+            fi
+        else
+            echo -e "${BOLD_RED}Download failed with status code: $curl_status${NC}"
+            rm -f "$temp_file"
+            retry_count=$((retry_count + 1))
+        fi
+    done
+    
+    # Exit critical section before returning
+    local success="$download_success"
+    exit_critical_section
+    
+    if [ "$success" = true ]; then
+        return 0
+    else
+        echo -e "${BOLD_RED}Failed to download after $max_retries attempts.${NC}"
+        return 1
+    fi
+}
+
 # Function to display model selection menu
 model_selection_menu() {
     local models=(
@@ -804,15 +1278,14 @@ model_selection_menu() {
         "sd3:huggingface.co/leo009/stable-diffusion-3-medium/resolve/main/sd3_medium_incl_clips_t5xxlfp16.safetensors:Stable Diffusion 3 Medium (standalone)"
     )
     
+    # Enter critical section for model selection
+    enter_critical_section "Model Selection"
+    
     print_color "BLUE" "Model Selection" "header"
     
-    # Create directory with animation
-    echo -e "${YELLOW}Creating model directories...${NC}"
-    mkdir -p stable-diffusion.cpp/models/flux > /dev/null 2>&1 &
-    spinner $!
-    
-    if [ ! -d "stable-diffusion.cpp/models/flux" ]; then
-        print_color "RED" "Failed to create model directories." "error"
+    # Create model directories
+    if ! create_directory "stable-diffusion.cpp/models/flux" "model directories"; then
+        exit_critical_section
         return 1
     fi
     
@@ -875,6 +1348,13 @@ model_selection_menu() {
         done
     fi
     
+    # Check if any models were selected
+    if [ ${#selected[@]} -eq 0 ]; then
+        print_color "BOLD_RED" "No models selected. Aborting download." "error"
+        exit_critical_section
+        return 1
+    fi
+    
     echo
     print_color "BOLD_CYAN" "Download Summary" "subheader"
     echo -e "${BOLD_WHITE}Selected models to download:${NC}"
@@ -893,11 +1373,14 @@ model_selection_menu() {
     # Clear any leftover progress bars or spinners
     echo -ne "\033[2K\r"
     
+    # Track overall success
+    local all_downloads_successful=true
+    
     for idx in "${selected[@]}"; do
         IFS=':' read -r name url description <<< "${models[$idx]}"
         
-        # Debug the URL to be 100% sure
-        echo -e "${BOLD_CYAN}Debug - Original URL: ${WHITE}$url${NC}"
+        # Process URL
+        echo -e "${BOLD_CYAN}Processing URL for ${WHITE}$name${NC}"
         
         # Remove any duplicate https:// prefixes that might have been added
         url=$(echo "$url" | sed 's|^https://https://|https://|')
@@ -907,13 +1390,14 @@ model_selection_menu() {
             url="https://$url"
         fi
         
-        echo -e "${BOLD_CYAN}Debug - Final URL: ${WHITE}$url${NC}"
+        echo -e "${BOLD_CYAN}Final URL: ${WHITE}$url${NC}"
         
         # Final validation check
         if [[ ! "$url" =~ ^https?://[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/ ]]; then
             echo -e "${BOLD_RED}❌ Invalid URL format: ${WHITE}$url${NC}"
             echo -e "${BOLD_RED}Please check the model definition and try again.${NC}"
-            return 1
+            all_downloads_successful=false
+            continue
         fi
         
         filename=$(basename "$url" | sed 's/\?.*//')
@@ -938,14 +1422,6 @@ model_selection_menu() {
             dest_path="stable-diffusion.cpp/models/sd3_medium_incl_clips_t5xxlfp16.safetensors"
         else
             dest_path="stable-diffusion.cpp/models/$filename"
-        fi
-        
-        # Ensure parent directory exists with proper permissions
-        local parent_dir=$(dirname "$dest_path")
-        if [ ! -d "$parent_dir" ]; then
-            print_color "BOLD_YELLOW" "Creating directory: $parent_dir" "info"
-            mkdir -p "$parent_dir"
-            chmod 775 "$parent_dir"  # Ensure directory is writable
         fi
         
         # Full path debugging
@@ -982,8 +1458,6 @@ model_selection_menu() {
         echo -e "${BOLD_BLUE}┌─────────────────────────────────────────────────────────┐"
         echo -e "│ ${WHITE}Downloading: ${BOLD_CYAN}$name${BOLD_BLUE}                                     │"
         echo -e "└─────────────────────────────────────────────────────────┘${NC}"
-        echo -e "${BOLD_WHITE}Source: ${CYAN}$url${NC}"
-        echo -e "${BOLD_WHITE}Destination: ${CYAN}$dest_path${NC}"
         
         # Add estimation of file size if available in the model description
         if [[ $name == "sd15" ]]; then
@@ -999,131 +1473,12 @@ model_selection_menu() {
         fi
         echo
         
-        # Set global variables to track current download for cleanup function
-        current_model_name="$name"
-        current_download_file="$dest_path"
-        
-        # Download with progress bar and retry logic
-        max_retries=3
-        retry_count=0
-        download_success=false
-        
-        while [ $retry_count -lt $max_retries ] && [ "$download_success" = false ]; do
-            if [ $retry_count -gt 0 ]; then
-                echo -e "${BOLD_YELLOW}Retry attempt $retry_count of $max_retries...${NC}"
-                sleep 2
-            fi
-            
-            # Use a temporary file for curl output to prevent interference with other output
-            local temp_file="/tmp/diffugen_download_$$.part"
-            
-            # Clean up the terminal for proper progress display
-            echo -e "${BOLD_CYAN}Preparing to download...${NC}"
-            
-            # Create clear visual separation before the progress bar
-            echo -e "${BOLD_BLUE}┌────────────────────────────────────────────────────┐"
-            echo -e "│ ${WHITE}Download Progress${BOLD_BLUE}                                  │"
-            echo -e "└────────────────────────────────────────────────────┘${NC}"
-            
-            # Wait a moment for the terminal to be ready
-            sleep 1
-            
-            # Run curl with progress
-            echo -e "${YELLOW}Downloading ${BOLD_WHITE}$name${YELLOW}...${NC}"
-            curl -L "$url" -o "$temp_file" --progress-bar
-            curl_status=$?
-            
-            # Add a newline after progress bar completes
-            echo
-            
-            # Continue with the rest of the download logic
-            if [ $curl_status -eq 0 ]; then
-                # Move from temporary location to final destination
-                if [ -f "$temp_file" ]; then
-                    echo -e "${BOLD_CYAN}Moving file to final destination...${NC}"
-                    mv "$temp_file" "$dest_path"
-                    move_status=$?
-                    
-                    if [ $move_status -eq 0 ] && [ -f "$dest_path" ]; then
-                        download_success=true
-                        # Get file size for confirmation
-                        local file_size=$(du -h "$dest_path" | cut -f1)
-                        echo -e "\n${BOLD_GREEN}✅ Download complete: ${WHITE}$name ${BOLD_GREEN}(${CYAN}$file_size${BOLD_GREEN})${NC}"
-                        echo -e "${BOLD_WHITE}File saved to: ${CYAN}$dest_path${NC}"
-                        echo -e "${BOLD_WHITE}Verifying file integrity...${NC}"
-                        
-                        # Verify file size is non-zero
-                        local file_bytes=$(stat -c %s "$dest_path" 2>/dev/null || stat -f %z "$dest_path" 2>/dev/null)
-                        if [ "$file_bytes" -gt 1000 ]; then  # File should be at least 1KB
-                            echo -e "${BOLD_GREEN}✓ File integrity check passed!${NC}"
-                            
-                            # Make sure file is readable by everyone
-                            chmod 664 "$dest_path"
-                        else
-                            echo -e "${BOLD_RED}⚠ Warning: Downloaded file is very small (${file_bytes} bytes)${NC}"
-                            echo -e "${BOLD_YELLOW}This may indicate a download problem.${NC}"
-                        fi
-                    else
-                        echo -e "\n${BOLD_RED}❌ Error: Failed to move file to final destination:${NC}"
-                        echo -e "${BOLD_WHITE}Source: $temp_file${NC}"
-                        echo -e "${BOLD_WHITE}Destination: $dest_path${NC}"
-                        echo -e "${BOLD_RED}Move status: $move_status${NC}"
-                        
-                        # Try an alternative approach with sudo if standard move failed
-                        echo -e "${BOLD_YELLOW}Attempting fallback copy method...${NC}"
-                        cp "$temp_file" "$dest_path" 2>/dev/null
-                        
-                        if [ -f "$dest_path" ]; then
-                            download_success=true
-                            local file_size=$(du -h "$dest_path" | cut -f1)
-                            echo -e "${BOLD_GREEN}✓ Copy successful! (${CYAN}$file_size${BOLD_GREEN})${NC}"
-                            # Make sure file is readable by everyone
-                            chmod 664 "$dest_path"
-                        else
-                            retry_count=$((retry_count + 1))
-                            if [ $retry_count -lt $max_retries ]; then
-                                echo -e "${BOLD_YELLOW}Retrying download...${NC}"
-                            else
-                                echo -e "${BOLD_RED}Failed to save file after $max_retries attempts.${NC}"
-                                # Clean up any temp files that might exist
-                                rm -f "$temp_file" 2>/dev/null
-                                return 1
-                            fi
-                        fi
-                    fi
-                else
-                    echo -e "\n${BOLD_RED}❌ Error: Temporary file was not created:${NC}"
-                    echo -e "${BOLD_WHITE}$temp_file${NC}"
-                    
-                    retry_count=$((retry_count + 1))
-                    if [ $retry_count -lt $max_retries ]; then
-                        echo -e "${BOLD_YELLOW}Retrying download...${NC}"
-                    else
-                        echo -e "${BOLD_RED}Failed to download after $max_retries attempts.${NC}"
-                        # Clean up any temp files that might exist
-                        rm -f "$temp_file" 2>/dev/null
-                        return 1
-                    fi
-                fi
-            else
-                retry_count=$((retry_count + 1))
-                if [ $retry_count -lt $max_retries ]; then
-                    echo -e "\n${BOLD_YELLOW}⚠ Download failed with error code $curl_status. Retrying...${NC}"
-                    # Clean up any temp files that might exist
-                    rm -f "$temp_file" 2>/dev/null
-                else
-                    echo -e "\n${BOLD_RED}❌ Download failed after $max_retries attempts: ${WHITE}$name${NC}"
-                    echo -e "${BOLD_RED}Error code: $curl_status${NC}"
-                    # Clean up any temp files that might exist
-                    rm -f "$temp_file" 2>/dev/null
-                    return 1
-                fi
-            fi
-        done
-        
-        # Clear the current download tracking variables once download is complete
-        current_model_name=""
-        current_download_file=""
+        # Download the file using our new download_file function
+        if ! download_file "$url" "$dest_path" "$name" 3; then
+            print_color "BOLD_RED" "Failed to download $name. Please try again later." "error"
+            all_downloads_successful=false
+            continue
+        fi
         
         echo
     done
@@ -1131,299 +1486,141 @@ model_selection_menu() {
     # After all downloads, verify that files were actually saved
     echo -e "${BOLD_CYAN}Verifying downloaded models...${NC}"
     echo -e "${BOLD_WHITE}Checking models directory: stable-diffusion.cpp/models/${NC}"
-    ls -la stable-diffusion.cpp/models/
-    echo -e "${BOLD_WHITE}Checking flux directory: stable-diffusion.cpp/models/flux/${NC}"
-    ls -la stable-diffusion.cpp/models/flux/ 2>/dev/null || echo -e "${BOLD_YELLOW}(Flux directory is empty or not created)${NC}"
+    ls -la stable-diffusion.cpp/models/ || print_color "BOLD_RED" "Failed to list models directory." "error"
     
     echo
-    print_color "BOLD_GREEN" "✅ All models downloaded successfully! ✅" "success"
-    
-    # Display dependency warning after downloads if specific combinations were downloaded
-    local has_flux=$(echo "${selected[@]}" | grep -E '(^|[[:space:]])(0|1)($|[[:space:]])' | wc -l)
-    local has_flux_deps=$(echo "${selected[@]}" | grep -E '(^|[[:space:]])(2|3|4)($|[[:space:]])' | wc -c)
-    local has_sdxl=$(echo "${selected[@]}" | grep -E '(^|[[:space:]])5($|[[:space:]])' | wc -l)
-    local has_sdxl_vae=$(echo "${selected[@]}" | grep -E '(^|[[:space:]])6($|[[:space:]])' | wc -l)
-    
-    if [ "$has_flux" -gt 0 ] && [ "$has_flux_deps" -eq 0 ]; then
-        echo
-        print_color "BOLD_RED" "⚠ WARNING: You downloaded Flux models but not all required dependencies!" "warning"
-        print_color "BOLD_YELLOW" "Flux models require t5xxl, clip-l, and vae files to work properly." "warning"
-        print_color "BOLD_YELLOW" "Please run the download step again to get the missing dependencies." "warning"
+    if [ "$all_downloads_successful" = true ]; then
+        print_color "BOLD_GREEN" "✅ All models downloaded successfully! ✅" "success"
+        exit_critical_section
+        return 0
+    else
+        print_color "BOLD_YELLOW" "⚠ Some downloads failed. Please try again later." "warning"
+        exit_critical_section
+        return 1
     fi
-    
-    if [ "$has_sdxl" -gt 0 ] && [ "$has_sdxl_vae" -eq 0 ]; then
-        echo
-        print_color "BOLD_RED" "⚠ WARNING: You downloaded SDXL but not the required VAE!" "warning"
-        print_color "BOLD_YELLOW" "SDXL requires the sdxl-vae file to generate proper images." "warning"
-        print_color "BOLD_YELLOW" "Please run the download step again to get the missing dependency." "warning"
-    fi
-    
-    return 0
 }
 
-# Function to display TUI menu
-display_tui_menu() {
-    # Use a static variable to track if this is the first run
-    if [ -z "$MENU_DISPLAYED" ]; then
-    clear
+# Function to display the main menu and get user selections
+display_main_menu() {
+    local steps=(
+        "Install dependencies"
+        "Clone and setup stable-diffusion.cpp"
+        "Build stable-diffusion.cpp"
+        "Set up Python virtual environment"
+        "Update file paths in configuration"
+        "Download models"
+    )
+    
+    local selected=()
+    local all_selected=false
+    
+    echo
+    echo -e "${BOLD_CYAN}┌─────────────────────────────────────────────────────────┐"
+    echo -e "│ ${WHITE}Main Menu - Select Steps to Perform${BOLD_CYAN}                      │"
+    echo -e "└─────────────────────────────────────────────────────────┘${NC}"
+    echo
+    
+    echo -e "${BOLD_CYAN}Please select which steps you want to perform:${NC}"
+    echo
+    
+    for i in "${!steps[@]}"; do
+        echo -e "${BOLD_GREEN}[$((i+1))] ${WHITE}${steps[$i]}${NC}"
+    done
+    
+    echo -e "${BOLD_GREEN}[a] ${WHITE}All steps (recommended for first-time setup)${NC}"
+    echo -e "${BOLD_GREEN}[q] ${WHITE}Quit${NC}"
+    echo
+    
+    echo -en "${BOLD_GREEN}Enter your choices (space-separated numbers, 'a' for all, 'q' to quit): ${NC}"
+    read -r choices
+    echo
+    
+    if [[ "$choices" == "q" || "$choices" == "Q" ]]; then
+        echo -e "${BOLD_YELLOW}Exiting DiffuGen setup.${NC}"
+        exit 0
+    elif [[ "$choices" == "a" || "$choices" == "A" ]]; then
+        echo -e "${BOLD_GREEN}Selected all steps.${NC}"
+        all_selected=true
+        for i in "${!steps[@]}"; do
+            selected+=($i)
+        done
+    else
+        for choice in $choices; do
+            # Check if choice is a number
+            if [[ "$choice" =~ ^[0-9]+$ ]]; then
+                idx=$((choice-1))
+                if [ $idx -ge 0 ] && [ $idx -lt ${#steps[@]} ]; then
+                    selected+=($idx)
+                    echo -e "${BOLD_GREEN}✓ Selected: ${WHITE}${steps[$idx]}${NC}"
+                else
+                    echo -e "${BOLD_RED}✗ Invalid selection: ${WHITE}$choice${NC}"
+                fi
+            else
+                echo -e "${BOLD_RED}✗ Invalid selection: ${WHITE}$choice${NC}"
+            fi
+        done
+    fi
+    
+    if [ ${#selected[@]} -eq 0 ] && [ "$all_selected" = false ]; then
+        echo -e "${BOLD_YELLOW}No steps selected.${NC}"
+        echo -e "${BOLD_YELLOW}Exiting DiffuGen setup.${NC}"
+        exit 0
+    fi
+    
+    echo "${selected[*]}"
+}
+
+# Main execution with menu system
+main() {
+    # Display the logo
     display_logo
-        MENU_DISPLAYED=1
+    
+    echo -e "\n${BOLD_CYAN}Welcome to DiffuGen Setup!${NC}"
+    echo -e "${BOLD_CYAN}This script will guide you through setting up DiffuGen.${NC}"
+    echo -e "${BOLD_CYAN}You can choose which steps to perform from the menu below.${NC}"
+    
+    # Get user selections from the menu
+    if [ "$INTERACTIVE_MODE" = true ]; then
+        SELECTED_STEPS=$(display_main_menu)
     else
-        clear
+        # In non-interactive mode, select all steps
+        SELECTED_STEPS="0 1 2 3 4 5"
+        echo -e "${BOLD_CYAN}Running in non-interactive mode. All steps will be performed.${NC}"
     fi
     
-    echo -e "${CYAN}===== DiffuGen Setup Menu =====${NC}"
-    echo "1. Install dependencies"
-    echo "2. Clone/update stable-diffusion.cpp"
-    echo "3. Build stable-diffusion.cpp"
-    echo "4. Set up Python environment"
-    echo "5. Download models"
-    echo "6. Update configuration files"
-    echo "7. Run all steps (recommended)"
-    echo "8. Exit"
-    echo
+    # Define step functions in an array
+    STEP_FUNCTIONS=(
+        install_dependencies
+        setup_stable_diffusion_cpp
+        build_stable_diffusion_cpp
+        setup_venv
+        update_file_paths
+        model_selection_menu
+    )
     
-    read -p "Enter your choice (1-8): " choice
-    echo
+    # Step descriptions
+    STEP_DESCRIPTIONS=(
+        "Installing dependencies"
+        "Setting up stable-diffusion.cpp"
+        "Building stable-diffusion.cpp"
+        "Setting up Python virtual environment"
+        "Updating file paths"
+        "Downloading models"
+    )
     
-    case $choice in
-        1)
-            run_with_error_handling "Installing dependencies" install_dependencies
-            read -p "Press Enter to continue..."
-            display_tui_menu
-            ;;
-        2)
-            run_with_error_handling "Setting up stable-diffusion.cpp" setup_stable_diffusion_cpp
-            read -p "Press Enter to continue..."
-            display_tui_menu
-            ;;
-        3)
-            run_with_error_handling "Building stable-diffusion.cpp" build_stable_diffusion_cpp
-            read -p "Press Enter to continue..."
-            display_tui_menu
-            ;;
-        4)
-            run_with_error_handling "Setting up Python environment" setup_venv
-            read -p "Press Enter to continue..."
-            display_tui_menu
-            ;;
-        5)
-            run_with_error_handling "Downloading models" model_selection_menu
-            read -p "Press Enter to continue..."
-            display_tui_menu
-            ;;
-        6)
-            run_with_error_handling "Updating configuration files" update_file_paths
-            read -p "Press Enter to continue..."
-            display_tui_menu
-            ;;
-        7)
-            run_with_error_handling "Installing dependencies" install_dependencies
-            run_with_error_handling "Setting up stable-diffusion.cpp" setup_stable_diffusion_cpp
-            run_with_error_handling "Building stable-diffusion.cpp" build_stable_diffusion_cpp
-            run_with_error_handling "Setting up Python environment" setup_venv
-            run_with_error_handling "Downloading models" model_selection_menu
-            run_with_error_handling "Updating configuration files" update_file_paths
-            
-            print_color "GREEN" "DiffuGen setup completed successfully!" "success"
-            
-            # Show completion guide
-            show_completion_guide
-            
-            read -p "Press Enter to continue..."
-            display_tui_menu
-            ;;
-        8)
-            print_color "YELLOW" "Exiting DiffuGen setup." "warning"
-            exit 0
-            ;;
-        *)
-            print_color "RED" "Invalid choice. Please try again." "error"
-            read -p "Press Enter to continue..."
-            display_tui_menu
-            ;;
-    esac
+    # Run selected steps
+    echo
+    for idx in $SELECTED_STEPS; do
+        func=${STEP_FUNCTIONS[$idx]}
+        desc=${STEP_DESCRIPTIONS[$idx]}
+        run_with_error_handling "$desc" "$func"
+    done
+    
+    # Final success message
+    echo -e "\n${BOLD_GREEN}✅ DiffuGen setup completed! ✅${NC}"
+    echo -e "${BOLD_CYAN}You can now use DiffuGen to generate images.${NC}"
+    echo -e "${BOLD_CYAN}Run ./diffugen.py to get started.${NC}"
 }
 
-# Function to show completion guide
-show_completion_guide() {
-    print_color "GREEN" "✅ DiffuGen Setup Successfully Completed! ✅" "success"
-echo
-
-print_color "CYAN" "╔════════════════════════════════════════════════════════════╗"
-print_color "CYAN" "║                     COMPREHENSIVE GUIDE                    ║"
-print_color "CYAN" "╚════════════════════════════════════════════════════════════╝"
-echo
-
-echo
-print_color "PURPLE" "    ______   __   ___   ___         _______              "
-print_color "GREEN" "   |   _  \ |__|.'  _|.'  _|.--.--.|   _   |.-----.-----. "
-print_color "YELLOW" "   |.  |   \|  ||   _||   _||  |  ||.  |___||  -__|     |"
-print_color "PURPLE" "   |.  |    \__||__|  |__|  |_____||.  |   ||_____|__|__|"
-print_color "BLUE" "     |:  1    /                      |:  1   |             "
-print_color "YELLOW" "   |::.. . /                       |::.. . |             "
-    print_color "PURPLE" "   \`------'                        \`-------'             "
-
-# MCP Integration Section
-    print_color "BLUE" "📌 MCP INTEGRATION" "header"
-echo "To use DiffuGen with MCP-compatible IDEs (Cursor, Windsurf, etc.):"
-echo
-print_color "YELLOW" "1. Add the following to your MCP configuration:"
-echo "───────────────────────────────────────────────────────────"
-cat diffugen.json | sed 's/^/  /'
-echo "───────────────────────────────────────────────────────────"
-echo
-
-# Command Line Usage Section
-    print_color "BLUE" "📌 COMMAND LINE USAGE" "header"
-echo "To generate images directly from the command line:"
-echo
-print_color "YELLOW" "Basic usage:"
-echo "  ./diffugen.sh \"A beautiful sunset over mountains\""
-echo
-print_color "YELLOW" "Advanced usage with parameters:"
-echo "  ./diffugen.sh \"A beautiful sunset over mountains\" \\"
-echo "    --model flux-dev \\"
-echo "    --width 1024 \\"
-echo "    --height 768 \\"
-echo "    --steps 30 \\"
-echo "    --cfg-scale 7 \\"
-echo "    --seed 42 \\"
-echo "    --sampling-method euler_a \\"
-echo "    --negative-prompt \"blurry, ugly\""
-echo
-
-# Supported Models Section
-    print_color "BLUE" "📌 SUPPORTED MODELS" "header"
-echo "DiffuGen supports the following models:"
-echo
-
-print_color "YELLOW" "-  flux-schnell: " && echo "Fast generation model (default)"
-print_color "YELLOW" "-  flux-dev:    " && echo "Development model with better quality"
-print_color "YELLOW" "-  sdxl:        " && echo "Stable Diffusion XL 1.0 for high-quality images"
-print_color "YELLOW" "-  sd3:         " && echo "Stable Diffusion 3 Medium"
-print_color "YELLOW" "-  sd15:        " && echo "Stable Diffusion 1.5 classic model"
-echo
-
-    # Model Dependencies Section
-    print_color "BLUE" "📌 MODEL DEPENDENCIES" "header"
-    echo "Make sure you have all required files for the models you want to use:"
-    echo
-
-    print_color "YELLOW" "-  Flux models (flux-schnell, flux-dev) require:"
-    print_color "CYAN" "   • t5xxl Text Encoder" "bullet"
-    print_color "CYAN" "   • clip-l Text Encoder" "bullet"
-    print_color "CYAN" "   • VAE decoder" "bullet"
-    echo
-
-    print_color "YELLOW" "-  SDXL requires:"
-    print_color "CYAN" "   • sdxl-vae VAE file" "bullet"
-    echo
-
-    print_color "YELLOW" "-  SD15 and SD3 models are standalone and don't require additional files"
-    echo
-
-# Examples Section
-    print_color "BLUE" "📌 EXAMPLES" "header"
-echo "Try these example prompts to get started:"
-echo
-print_color "YELLOW" "-  Generate a simple image:"
-echo "  ./diffugen.sh \"A cat sitting on a windowsill\""
-echo
-print_color "YELLOW" "-  Generate with specific dimensions:"
-echo "  ./diffugen.sh \"A futuristic cityscape\" --width 1024 --height 512"
-echo
-print_color "YELLOW" "-  Use a different model with custom parameters:"
-echo "  ./diffugen.sh \"Portrait of a cyberpunk character\" --model sdxl --steps 50 --cfg-scale 8"
-echo
-
-# Troubleshooting Section
-    print_color "BLUE" "📌 TROUBLESHOOTING" "header"
-echo "If you encounter issues:"
-echo
-print_color "YELLOW" "-  Verify model files are in the correct location:"
-echo "  ls -la ./stable-diffusion.cpp/models/"
-echo
-print_color "YELLOW" "-  Check for CUDA compatibility:"
-echo "  ./stable-diffusion.cpp/build/bin/sd --help"
-echo
-print_color "YELLOW" "-  For low VRAM, try reducing dimensions or steps:"
-echo "  ./diffugen.sh \"Simple landscape\" --width 512 --height 512 --steps 20"
-echo
-
-# Resources Section
-    print_color "BLUE" "📌 RESOURCES" "header"
-echo "For more information and support:"
-echo
-print_color "YELLOW" "-  GitHub:  " && echo "http://github.com/CLOUDWERX-DEV/diffugen"
-print_color "YELLOW" "-  Website: " && echo "http://cloudwerx.dev"
-print_color "YELLOW" "-  Documentation: " && echo "http://github.com/CLOUDWERX-DEV/diffugen/wiki"
-print_color "YELLOW" "-  Report Issues: " && echo "http://github.com/CLOUDWERX-DEV/diffugen/issues"
-echo
-
-# Footer
-print_color "GREEN" "╔════════════════════════════════════════════════════════════╗"
-print_color "GREEN" "║                                                            ║"
-print_color "GREEN" "║      Made with ❤️ by CLOUDWERX LAB                         ║"
-print_color "GREEN" "║      \"Digital Food for the Analog Soul\"                  ║"
-print_color "GREEN" "║                                                            ║"
-print_color "GREEN" "╚════════════════════════════════════════════════════════════╝"
-
-# Prompt for next steps
-echo
-print_color "CYAN" "What would you like to do next?"
-echo "1. Generate your first image"
-echo "2. View documentation"
-echo "3. Exit setup"
-read -p "Enter your choice (1-3): " choice
-
-case $choice in
-    1)
-        read -p "Enter your prompt: " user_prompt
-        echo "Generating image with prompt: \"$user_prompt\"..."
-        ./diffugen.sh "$user_prompt"
-        ;;
-    2)
-        echo "Opening documentation..."
-        if command -v xdg-open &> /dev/null; then
-            xdg-open "http://github.com/CLOUDWERX-DEV/diffugen"
-        elif command -v open &> /dev/null; then
-            open "http://github.com/CLOUDWERX-DEV/diffugen"
-        elif command -v start &> /dev/null; then
-            start "http://github.com/CLOUDWERX-DEV/diffugen"
-        else
-            echo "Could not open browser automatically. Please visit: http://github.com/CLOUDWERX-DEV/diffugen"
-        fi
-        ;;
-    3)
-            print_color "YELLOW" "Thank you for installing DiffuGen! Exiting setup." "warning"
-        ;;
-    *)
-            print_color "RED" "Invalid choice. Exiting setup." "error"
-        ;;
-esac
-}
-
-# Main script execution
-trap 'cleanup "Script interrupted by user"' INT TERM
-
-# Before we start, ensure we have a trap function to handle the signals properly
-handle_interrupt() {
-    echo
-    if [ -n "$current_model_name" ] && [ -n "$current_download_file" ]; then
-        print_color "BOLD_YELLOW" "Download of '$current_model_name' was interrupted by user." "warning"
-        cleanup "Download of '$current_model_name' was interrupted"
-    else
-        cleanup "Script interrupted by user"
-    fi
-    exit 1
-}
-
-# Set up trap to catch interrupts
-trap handle_interrupt INT TERM
-
-# Initialize the menu directly without calling display_logo separately
-display_tui_menu
-
-exit 0
-
+# Execute main function
+main
