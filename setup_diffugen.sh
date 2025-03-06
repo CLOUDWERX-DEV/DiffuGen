@@ -187,16 +187,22 @@ print_color() {
     
     case $style in
         "header")
-            echo -e "\n${!color_name}╔════════════════════════════════════════════════════════════╗"
-            echo -e "║ ${WHITE}${text}${!color_name} "
-            printf '%*s' $((63 - ${#text})) "║"
-            echo -e "\n╚════════════════════════════════════════════════════════════╝${NC}\n"
+            # Create the decorative header with horizontal lines and the text in the middle
+            local line_char="═"
+            local left_char="╔"
+            local right_char="╗"
+            local line_length=70
+            
+            echo -e "\n${!color_name}${left_char}${line_char}${line_char}${line_char}${line_char}${line_char}${line_char} ${YELLOW}${text} ${!color_name}${line_char}${line_char}${line_char}${line_char}${line_char}${line_char}${line_char}${line_char}${line_char}${line_char}${line_char}${line_char}${line_char}${line_char}${line_char}${line_char}${line_char}${line_char}${line_char}${line_char}${line_char}${line_char}${line_char}${line_char}${line_char}${line_char}${line_char}${line_char}${line_char}${right_char}${NC}\n"
             ;;
         "subheader")
-            echo -e "\n${!color_name}┌─────────────────────────────────────────────────────────┐"
-            echo -e "│ ${WHITE}${text}${!color_name} "
-            printf '%*s' $((60 - ${#text})) "│"
-            echo -e "\n└─────────────────────────────────────────────────────────┘${NC}\n"
+            # Create the decorative subheader with horizontal lines and the text in the middle
+            local line_char="─"
+            local left_char="┌"
+            local right_char="┐"
+            local line_length=65
+            
+            echo -e "\n${!color_name}${left_char}${line_char}${line_char}${line_char}${line_char}${line_char}${line_char} ${YELLOW}${text} ${!color_name}${line_char}${line_char}${line_char}${line_char}${line_char}${line_char}${line_char}${line_char}${line_char}${line_char}${line_char}${line_char}${line_char}${line_char}${line_char}${line_char}${line_char}${line_char}${line_char}${line_char}${line_char}${line_char}${line_char}${line_char}${line_char}${line_char}${line_char}${right_char}${NC}\n"
             ;;
         "success")
             echo -e "${BOLD_GREEN}✓ ${!color_name}${text}${NC}"
@@ -953,8 +959,8 @@ model_selection_menu() {
         
         # Check if file already exists
         if [ -f "$dest_path" ]; then
-            echo -e "${BOLD_BLUE}┌─────────────────────────────────────────────────────────┐"
-            echo -e "│ ${WHITE}File already exists: ${BOLD_CYAN}$name${BOLD_BLUE}                               │"
+            echo -e "${BOLD_PURPLE}┌─────────────────────────────────────────────────────────┐"
+            echo -e "│ ${WHITE}File already exists: ${BOLD_YELLOW}$name${BOLD_PURPLE}                               │"
             echo -e "└─────────────────────────────────────────────────────────┘${NC}"
             echo -e "${BOLD_WHITE}Path: ${CYAN}$dest_path${NC}"
             
@@ -1180,11 +1186,11 @@ display_tui_menu() {
     echo -e "${YELLOW}5. Download models"
     echo -e "${YELLOW}6. Update configuration files"
     echo -e "${BOLD_YELLOW}7. Run all steps ${PURPLE}(recommended)"
-    echo -e "${RED}8. ${BOLD_RED}Exit"
-    echo -e "${PURPLE}9. ${BOLD_PURPLE}Display Guide"
+    echo -e "${PURPLE}8. ${BOLD_PURPLE}Display Guide"
+    echo -e "${RED}9. ${BOLD_RED}Exit"
     echo
     
-    echo -ne "${YELLOW}Enter your choice ${BOLD_PURPLE}(${BOLD_PURPLE}1${BOLD_PURPLE}-${BOLD_PURPLE}8${BOLD_PURPLE}): ${BOLD_PURPLE}"
+    echo -ne "${YELLOW}Enter your choice ${BOLD_PURPLE}(${BOLD_PURPLE}1${BOLD_PURPLE}-${BOLD_PURPLE}9${BOLD_PURPLE}): ${BOLD_PURPLE}"
     read choice
     echo -ne "${NC}"
     echo
@@ -1236,7 +1242,12 @@ display_tui_menu() {
             read -p "Press Enter to continue..."
             display_tui_menu
             ;;
-        8)
+        8)  
+            show_completion_guide            
+            read -p "Press Enter to continue..."
+            display_tui_menu
+            ;;    
+        9)
             print_color "YELLOW" "Exiting DiffuGen setup." "warning"
             exit 0
             ;;
@@ -1245,11 +1256,6 @@ display_tui_menu() {
             read -p "Press Enter to continue..."
             display_tui_menu
             ;;
-        9)  
-            show_completion_guide            
-            read -p "Press Enter to continue..."
-            display_tui_menu
-            ;;    
     esac
 }
 
@@ -1258,9 +1264,9 @@ show_completion_guide() {
     print_color "GREEN" "✅ DiffuGen Setup Successfully Completed! ✅" "success"
 echo
 
-print_color "PURPLE" "╔════════════════════════════════════════════════════════════╗"
-print_color "PURPLE" "║                     COMPREHENSIVE GUIDE                    ║"
-print_color "PURPLE" "╚════════════════════════════════════════════════════════════╝"
+print_color "PURPLE" "╔════════════════════════════════════════════════════════════════════════╗"
+print_color "PURPLE" "║                          COMPREHENSIVE GUIDE                           ║"
+print_color "PURPLE" "╚════════════════════════════════════════════════════════════════════════╝"
 echo
 
 echo
@@ -1270,10 +1276,10 @@ print_color "YELLOW" "   |.  |   \|  ||   _||   _||  |  ||.  |___||  -__|     |"
 print_color "PURPLE" "   |.  |    \__||__|  |__|  |_____||.  |   ||_____|__|__|"
 print_color "BLUE" "     |:  1    /                      |:  1   |             "
 print_color "YELLOW" "   |::.. . /                       |::.. . |             "
-    print_color "PURPLE" "   \`------'                        \`-------'             "
+print_color "PURPLE" "   \`------'                        \`-------'             "
 
 # MCP Integration Section
-    print_color "BLUE" "📌 MCP INTEGRATION" "header"
+echo -e "\n${BOLD_PURPLE}╔══════ 📌 MCP INTEGRATION ══════════════════════════════════════════════════╗${NC}\n"
 echo "To use DiffuGen with MCP-compatible IDEs (Cursor, Windsurf, etc.):"
 echo
 print_color "YELLOW" "1. Add the following to your MCP configuration:"
@@ -1283,7 +1289,7 @@ echo "────────────────────────�
 echo
 
 # Command Line Usage Section
-    print_color "BLUE" "📌 COMMAND LINE USAGE" "header"
+echo -e "\n${BOLD_PURPLE}╔══════ 📌 COMMAND LINE USAGE ════════════════════════════════════════════════╗${NC}\n"
 echo "To generate images directly from the command line:"
 echo
 print_color "YELLOW" "Basic usage:"
@@ -1302,7 +1308,7 @@ echo "    --negative-prompt \"blurry, ugly\""
 echo
 
 # Supported Models Section
-    print_color "BLUE" "📌 SUPPORTED MODELS" "header"
+echo -e "\n${BOLD_PURPLE}╔══════ 📌 SUPPORTED MODELS ═════════════════════════════════════════════════╗${NC}\n"
 echo "DiffuGen supports the following models:"
 echo
 
@@ -1313,26 +1319,26 @@ print_color "YELLOW" "-  sd3:         " && echo "Stable Diffusion 3 Medium"
 print_color "YELLOW" "-  sd15:        " && echo "Stable Diffusion 1.5 classic model"
 echo
 
-    # Model Dependencies Section
-    print_color "BLUE" "📌 MODEL DEPENDENCIES" "header"
-    echo "Make sure you have all required files for the models you want to use:"
-    echo
+# Model Dependencies Section
+echo -e "\n${BOLD_PURPLE}╔══════ 📌 MODEL DEPENDENCIES ══════════════════════════════════════════════╗${NC}\n"
+echo "Make sure you have all required files for the models you want to use:"
+echo
 
-    print_color "YELLOW" "-  Flux models (flux-schnell, flux-dev) require:"
-    print_color "CYAN" "   • t5xxl Text Encoder" "bullet"
-    print_color "CYAN" "   • clip-l Text Encoder" "bullet"
-    print_color "CYAN" "   • VAE decoder" "bullet"
-    echo
+print_color "YELLOW" "-  Flux models (flux-schnell, flux-dev) require:"
+print_color "CYAN" "   • t5xxl Text Encoder" "bullet"
+print_color "CYAN" "   • clip-l Text Encoder" "bullet"
+print_color "CYAN" "   • VAE decoder" "bullet"
+echo
 
-    print_color "YELLOW" "-  SDXL requires:"
-    print_color "CYAN" "   • sdxl-vae VAE file" "bullet"
-    echo
+print_color "YELLOW" "-  SDXL requires:"
+print_color "CYAN" "   • sdxl-vae VAE file" "bullet"
+echo
 
-    print_color "YELLOW" "-  SD15 and SD3 models are standalone and don't require additional files"
-    echo
+print_color "YELLOW" "-  SD15 and SD3 models are standalone and don't require additional files"
+echo
 
 # Examples Section
-    print_color "BLUE" "📌 EXAMPLES" "header"
+echo -e "\n${BOLD_PURPLE}╔══════ 📌 EXAMPLES ════════════════════════════════════════════════════════╗${NC}\n"
 echo "Try these example prompts to get started:"
 echo
 print_color "YELLOW" "-  Generate a simple image:"
@@ -1346,7 +1352,7 @@ echo "  ./diffugen.sh \"Portrait of a cyberpunk character\" --model sdxl --steps
 echo
 
 # Troubleshooting Section
-    print_color "BLUE" "📌 TROUBLESHOOTING" "header"
+echo -e "\n${BOLD_PURPLE}╔══════ 📌 TROUBLESHOOTING ════════════════════════════════════════════════════╗${NC}\n"
 echo "If you encounter issues:"
 echo
 print_color "YELLOW" "-  Verify model files are in the correct location:"
@@ -1360,7 +1366,7 @@ echo "  ./diffugen.sh \"Simple landscape\" --width 512 --height 512 --steps 20"
 echo
 
 # Resources Section
-    print_color "BLUE" "📌 RESOURCES" "header"
+echo -e "\n${BOLD_PURPLE}╔══════ 📌 RESOURCES ══════════════════════════════════════════════════════════╗${NC}\n"
 echo "For more information and support:"
 echo
 print_color "YELLOW" "-  GitHub:  " && echo "http://github.com/CLOUDWERX-DEV/diffugen"
@@ -1370,28 +1376,22 @@ print_color "YELLOW" "-  Report Issues: " && echo "http://github.com/CLOUDWERX-D
 echo
 
 # Footer
-print_color "GREEN" "╔════════════════════════════════════════════════════════════╗"
-print_color "GREEN" "║                                                            ║"
-print_color "GREEN" "║      Made with ❤️ by CLOUDWERX LAB                         ║"
-print_color "GREEN" "║      \"Digital Food for the Analog Soul\"                  ║"
-print_color "GREEN" "║                                                            ║"
-print_color "GREEN" "╚════════════════════════════════════════════════════════════╝"
+print_color "PURPLE" "╔════════════════════════════════════════════════════════════════════════╗"
+print_color "PURPLE" "║                                                                        ║"
+print_color "PURPLE" "║                   Made with ❤️ by CLOUDWERX LAB                         ║"
+print_color "PURPLE" "║               \"Digital Food for the Analog Soul\"                       ║"
+print_color "PURPLE" "║                                                                        ║"
+print_color "PURPLE" "╚════════════════════════════════════════════════════════════════════════╝"
 
 # Prompt for next steps
 echo
-print_color "CYAN" "What would you like to do next?"
-echo "1. Generate your first image"
-echo "2. View documentation"
-echo "3. Exit setup"
-read -p "Enter your choice (1-3): " choice
+print_color "BOLD_PURPLE" "What would you like to do next?"
+echo "1. View documentation"
+echo "2. Return to main menu"
+read -p "Enter your choice (1-2): " choice
 
 case $choice in
     1)
-        read -p "Enter your prompt: " user_prompt
-        echo "Generating image with prompt: \"$user_prompt\"..."
-        ./diffugen.sh "$user_prompt"
-        ;;
-    2)
         echo "Opening documentation..."
         if command -v xdg-open &> /dev/null; then
             xdg-open "http://github.com/CLOUDWERX-DEV/diffugen"
@@ -1403,11 +1403,11 @@ case $choice in
             echo "Could not open browser automatically. Please visit: http://github.com/CLOUDWERX-DEV/diffugen"
         fi
         ;;
-    3)
-            print_color "YELLOW" "Thank you for installing DiffuGen! Exiting setup." "warning"
+    2)
+        print_color "YELLOW" "Returning to main menu..." "info"
         ;;
     *)
-            print_color "RED" "Invalid choice. Exiting setup." "error"
+        print_color "RED" "Invalid choice. Returning to main menu." "error"
         ;;
 esac
 }
