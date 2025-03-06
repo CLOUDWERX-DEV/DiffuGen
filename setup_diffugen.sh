@@ -50,9 +50,9 @@ animate_text() {
 spinner() {
     local pid=$1
     local delay=0.1
-    local spinstr='|/-\'
+    local spinstr='.O.O'
     
-    echo -ne "${BOLD_CYAN}"
+    echo -ne "${PURPLE}"
     while [ "$(ps a | awk '{print $1}' | grep $pid)" ]; do
         local temp=${spinstr#?}
         printf " [%c]  " "$spinstr"
@@ -72,7 +72,7 @@ progress_bar() {
     local start_time=$(date +%s)
     local sleep_duration=$(bc <<< "scale=4; $total_duration / $steps")
     
-    echo -e "${BOLD_CYAN}$message${NC}"
+    echo -e "${YELLOW}$message${NC}"
     
     for ((i=0; i<=$steps; i++)); do
         local current_time=$(date +%s)
@@ -137,42 +137,41 @@ box() {
 display_logo() {
     clear
     echo
-    animate_text "Loading DiffuGen Setup..." "BOLD_CYAN"
-    progress_bar 2 20 "Initializing..."
+    animate_text "Loading DiffuGen Setup... Hang Tight!" "BOLD_PURPLE"
+    progress_bar 2 20 "Get Ready For AWESOME!..."
     clear
     
-    echo -e "${PURPLE_BG}${WHITE}"
-    echo "                                                                                "
-    echo "                          DIFFUGEN SETUP UTILITY                                "
-    echo "                                                                                "
+    echo -e "${YELLOW_BG}"
+    echo -e "                                        ${BOLD_PURPLE} {´◕ ◡ ◕｀}                                               "
+    echo -e "                                ${BOLD_PURPLE}[ DiffuGen Setup Utility ]                                        "
     echo -e "${NC}"
     
-    echo -e "${BOLD_PURPLE}"   
-    echo  " ______ ________________ _______         _______ _______ _       "
-    sleep 0.1
-    echo " (  __  \\__   __(  ____ (  ____ \\     /(  ____ (  ____ ( (    /|"
-    sleep 0.1
-    echo " | (  \  )  ) (  | (    \/ (    \/ )   ( | (    \/ (    \/  \  ( |"
-    sleep 0.1
-    echo " | |   ) |  | |  | (__   | (__   | |   | | |     | (__   |   \ | |"
-    sleep 0.1
-    echo " | |   | |  | |  |  __)  |  __)  | |   | | | ____|  __)  | (\ \) |"
-    sleep 0.1
-    echo " | |   ) |  | |  | (     | (     | |   | | | \_  ) (     | | \   |"
-    sleep 0.1
-    echo " | (__/  )__) (__| )     | )     | (___) | (___) | (____/\ )  \  |"
-    sleep 0.1
-    echo " (______/\_______//      |/      (_______|_______|_______//    )_)"
-    echo -e "${NC}"
-    
-    box "Advanced Stable Diffusion Image Generator" "BOLD_CYAN"
-    animate_text "Made with ❤️  by CLOUDWERX LAB" "BOLD_YELLOW"
-    echo -e "${BOLD_CYAN}\"${BOLD_GREEN}Digital Food for the ${BOLD_PURPLE}Analog Soul${BOLD_CYAN}\"${NC}"
+            echo -e "${BOLD_PURPLE}"   
+            echo  "              ______ ________________ _______            _______ _______ _       "
+            sleep 0.1
+            echo "              (  __  \\__   __(  ____ (  ____ \\      /(  ____ (  ____ ( (    /|"
+            sleep 0.1
+            echo -e "${YELLOW}              | (  \  )  ) (  | (    \/ (    \/ )   ( | (    \/ (    \/  \  ( |"
+            echo "              | |   ) |  | |  | (__   | (__   | |   | | |     | (__   |   \ | |"
+            sleep 0.1
+            echo "              | |   | |  | |  |  __)  |  __)  | |   | | | ____|  __)  | (\ \) |"
+            sleep 0.1
+            echo "              | |   ) |  | |  | (     | (     | |   | | | \_  ) (     | | \   |"
+            sleep 0.1
+            echo -e "${BOLD_PURPLE}              | (__/  )__) (__| )     | )     | (___) | (___) | (____/\ )  \  |"
+            sleep 0.1
+            echo "              (______/\_______//      |/      (_______|_______|_______//    )_)"
+            echo -e "${NC}"
+
+            
+       box "Advanced Stable Diffusion Image Generator Designed For MCP Tool Usage & CLI Image Generation" "BOLD_PURPLE"
+       animate_text "Made with ❤️  by CLOUDWERX LAB - VIsit us at http://cloudwerx.dev | http://github.com/CLOUDWERX-DEV" "BOLD_YELLOW"
+echo -e  -------------------------------  "${BOLD_CYAN}\"${BOLD_GREEN}Digital Food "${WHITE}"for the ${BOLD_PURPLE}Analog Soul${BOLD_CYAN}\"${NC}"  -------------------------------
     echo
     
     # Draw a decorative line
-    echo -ne "${BOLD_BLUE}"
-    for ((i=0; i<80; i++)); do
+    echo -ne "${YELLOW}"
+    for ((i=0; i<98; i++)); do
         echo -n "═"
         sleep 0.005
     done
@@ -212,7 +211,7 @@ print_color() {
             echo -e "${BOLD_BLUE}ℹ ${!color_name}${text}${NC}"
             ;;
         "bullet")
-            echo -e "${BOLD_CYAN}• ${!color_name}${text}${NC}"
+            echo -e "${BOLD_PURPLE}• ${!color_name}${text}${NC}"
             ;;
         "model")
             echo -e "${!color_name}${text}"
@@ -430,13 +429,13 @@ wsl_setup() {
 # Function to clean up on failure with enhanced visuals
 cleanup() {
     echo
-    print_color "RED_BG" "                                                " ""
-    print_color "RED_BG" "  ⚠️  ERROR OCCURRED - STARTING CLEANUP PROCESS  " ""
-    print_color "RED_BG" "                                                " ""
+    print_color "PURPLE_BG" "                                                " ""
+    print_color "PURPLE_BG" "  ⚠️  ERROR OCCURRED - STARTING CLEANUP PROCESS  " ""
+    print_color "PURPLE_BG" "                                                " ""
     echo
     
     if [ -n "$1" ]; then
-        print_color "BOLD_RED" "Error message: $1" "error"
+        print_color "BOLD_YELLOW" "Error message: $1" "error"
     fi
     
     echo
@@ -485,7 +484,7 @@ cleanup() {
     echo
     print_color "YELLOW" "Please fix the issues and try again." "warning"
     echo
-    print_color "BOLD_BLUE" "For help, visit: https://github.com/CLOUDWERX-DEV/diffugen/issues" "info"
+    print_color "BOLD_PURPLE" "For help, visit: https://github.com/CLOUDWERX-DEV/diffugen/issues" "info"
     echo
     exit 1
 }
@@ -539,14 +538,14 @@ setup_stable_diffusion_cpp() {
 # Function to build stable-diffusion.cpp
 build_stable_diffusion_cpp() {
     cd stable-diffusion.cpp || return 1
-    print_color "BLUE" "Building stable-diffusion.cpp..." "subheader"
+    print_color "PURPLE" "Building stable-diffusion.cpp..." "subheader"
     mkdir -p build && cd build || return 1
     
     # Check if CUDA is available
     local cuda_available=false
     if command_exists nvcc; then
         cuda_version=$(nvcc --version | grep "release" | awk '{print $5}' | cut -d',' -f1)
-        print_color "GREEN" "CUDA compiler (nvcc) found, version: $cuda_version" "success"
+        print_color "YELLOW" "CUDA compiler (nvcc) found, version: $cuda_version" "success"
         cuda_available=true
     else
         print_color "YELLOW" "CUDA compiler (nvcc) not found in PATH." "warning"
@@ -564,8 +563,8 @@ build_stable_diffusion_cpp() {
     fi
     
     echo
-    echo -e "${BOLD_CYAN}┌─────────────────────────────────────────────────────────┐"
-    echo -e "│ ${WHITE}CUDA Configuration${BOLD_CYAN}                                       │"
+    echo -e "${BOLD_PURPLE}┌─────────────────────────────────────────────────────────┐"
+    echo -e "│ ${YELLOW}CUDA Configuration${BOLD_CYAN}                               │"
     echo -e "└─────────────────────────────────────────────────────────┘${NC}"
     echo
     read -p "$(echo -e ${BOLD_GREEN}Build Stable-Diffusion.cpp with CUDA support? \(y/n\)${NC} )" -n 1 -r
@@ -574,15 +573,15 @@ build_stable_diffusion_cpp() {
     if [[ $REPLY =~ ^[Yy]$ ]]; then
         if [ "$cuda_available" = false ]; then
             print_color "YELLOW" "Warning: CUDA compiler not detected, but attempting CUDA build anyway." "warning"
-            echo -e "${BOLD_YELLOW}┌─────────────────────────────────────────────────────────┐"
-            echo -e "│ ${WHITE}CUDA Troubleshooting Guide${BOLD_YELLOW}                                │"
+            echo -e "${BOLD_PURPLE}┌─────────────────────────────────────────────────────────┐"
+            echo -e "│ ${YELLOW}CUDA Troubleshooting Guide${BOLD_YELLOW}                     │"
             echo -e "└─────────────────────────────────────────────────────────┘${NC}"
             echo
             print_color "YELLOW" "If build fails, you may need to:" "bullet"
-            echo -e "${BOLD_CYAN}  1. ${WHITE}Install CUDA toolkit ${CYAN}(https://developer.nvidia.com/cuda-downloads)${NC}"
-            echo -e "${BOLD_CYAN}  2. ${WHITE}Make sure nvcc is in your PATH${NC}"
-            echo -e "${BOLD_CYAN}  3. ${WHITE}Set CUDACXX environment variable to point to nvcc${NC}"
-            echo -e "${BOLD_CYAN}  4. ${WHITE}Try building without CUDA support instead${NC}"
+            echo -e "${BOLD_PURPLE}  1. ${YELLOW}Install CUDA toolkit ${CYAN}(https://developer.nvidia.com/cuda-downloads)${NC}"
+            echo -e "${BOLD_PURPLE}  2. ${YELLOW}Make sure nvcc is in your PATH${NC}"
+            echo -e "${BOLD_PURPLE}  3. ${YELLOW}Set CUDACXX environment variable to point to nvcc${NC}"
+            echo -e "${BOLD_PURPLE}  4. ${YELLOW}Try building without CUDA support instead${NC}"
             echo
             read -p "$(echo -e ${BOLD_YELLOW}Continue with CUDA build attempt? \(y/n\)${NC} )" -n 1 -r
             echo
@@ -637,9 +636,9 @@ build_stable_diffusion_cpp() {
         fi
     fi
     
-    print_color "BLUE" "Compiling stable-diffusion.cpp (this may take a while)..." "info"
-    echo -e "${BOLD_CYAN}This process will utilize all available CPU cores for faster compilation.${NC}"
-    echo -e "${BOLD_CYAN}Your system may become less responsive during this process.${NC}"
+    print_color "YELLOW" "Compiling stable-diffusion.cpp (this may take a while)..." "info"
+    echo -e "${BOLD_PURPLE}This process will utilize all available CPU cores for faster compilation.${NC}"
+    echo -e "${BOLD_PURPLE}Your system may become less responsive during this process.${NC}"
     echo
     
     # Start the build process in the background
@@ -658,9 +657,9 @@ build_stable_diffusion_cpp() {
         if [ $elapsed -gt 60 ]; then
             mins=$((elapsed / 60))
             secs=$((elapsed % 60))
-            echo -ne "${BOLD_CYAN}Build in progress... ${WHITE}${mins}m ${secs}s elapsed${NC}\r"
+            echo -ne "${BOLD_PURPLE}Build in progress... ${WHITE}${mins}m ${secs}s elapsed${NC}\r"
         else
-            echo -ne "${BOLD_CYAN}Build in progress... ${WHITE}${elapsed}s elapsed${NC}\r"
+            echo -ne "${BOLD_PURPLE}Build in progress... ${WHITE}${elapsed}s elapsed${NC}\r"
         fi
         
         sleep 1
@@ -680,9 +679,9 @@ build_stable_diffusion_cpp() {
     if [ -f "bin/sd" ]; then
         echo
         print_color "GREEN" "✅ Build successful! ✅" "success"
-        echo -e "${BOLD_GREEN}┌─────────────────────────────────────────────────────────┐"
-        echo -e "│ ${WHITE}Executable created at:${BOLD_GREEN}                                   │"
-        echo -e "│ ${BOLD_WHITE}$(pwd)/bin/sd${BOLD_GREEN}                                        │"
+        echo -e "${BOLD_PURPLE}┌─────────────────────────────────────────────────────────┐"
+        echo -e "│ ${YELLOW}Executable created at:${BOLD_GREEN}                          │"
+        echo -e "│ ${BOLD_WHITE}$(pwd)/bin/sd${BOLD_GREEN}                              │"
         echo -e "└─────────────────────────────────────────────────────────┘${NC}"
         echo
         print_color "BOLD_GREEN" "Press Enter to continue..." "info"
@@ -697,11 +696,11 @@ build_stable_diffusion_cpp() {
 
 # Function to set up virtual environment
 setup_venv() {
-    print_color "BLUE" "Setting up Python virtual environment..." "subheader"
+    print_color "PURPLE" "Setting up Python virtual environment..." "subheader"
     
     # Check Python version
     local python_version=$(python3 --version 2>&1 | awk '{print $2}')
-    print_color "CYAN" "Detected Python version: $python_version" "info"
+    print_color "YELLOW" "Detected Python version: $python_version" "info"
     
     # Create virtual environment with animation
     echo -e "${YELLOW}Creating Python virtual environment...${NC}"
@@ -728,7 +727,7 @@ setup_venv() {
     
     # Install dependencies with progress animation
     echo -e "${YELLOW}Installing Python dependencies...${NC}"
-    echo -e "${BOLD_CYAN}This may take a few minutes depending on your internet connection.${NC}"
+    echo -e "${BOLD_PURPLE}This may take a few minutes depending on your internet connection.${NC}"
     echo
     
     # Show fancy progress bar
@@ -744,8 +743,8 @@ setup_venv() {
     echo
     print_color "GREEN" "✅ Python environment setup complete! ✅" "success"
     echo -e "${BOLD_GREEN}┌─────────────────────────────────────────────────────────┐"
-    echo -e "│ ${WHITE}Virtual environment:${BOLD_GREEN}                                     │"
-    echo -e "│ ${BOLD_WHITE}$(pwd)/diffugen_env${BOLD_GREEN}                                   │"
+    echo -e "│ ${WHITE}Virtual environment:${BOLD_GREEN}                            │"
+    echo -e "│ ${BOLD_WHITE}$(pwd)/diffugen_env${BOLD_GREEN}                        │"
     echo -e "└─────────────────────────────────────────────────────────┘${NC}"
     
     return 0
@@ -753,15 +752,15 @@ setup_venv() {
 
 # Function to update file paths
 update_file_paths() {
-    print_color "BLUE" "Updating configuration files..." "subheader"
+    print_color "PURPLE" "Updating configuration files..." "subheader"
     
     local current_dir=$(pwd)
-    print_color "CYAN" "Current directory: $current_dir" "info"
+    print_color "YELLOW" "Current directory: $current_dir" "info"
     
     echo -e "${YELLOW}Updating paths in configuration files...${NC}"
     
     # List files to be updated
-    echo -e "${BOLD_CYAN}The following files will be updated:${NC}"
+    echo -e "${BOLD_PURPLE}The following files will be updated:${NC}"
     echo -e "${BOLD_GREEN}  • ${WHITE}diffugen.json${NC}"
     echo -e "${BOLD_GREEN}  • ${WHITE}diffugen.sh${NC}"
     echo -e "${BOLD_GREEN}  • ${WHITE}diffugen.py${NC}"
@@ -804,7 +803,7 @@ model_selection_menu() {
         "sd3:huggingface.co/leo009/stable-diffusion-3-medium/resolve/main/sd3_medium_incl_clips_t5xxlfp16.safetensors:Stable Diffusion 3 Medium (standalone)"
     )
     
-    print_color "BLUE" "Model Selection" "header"
+    print_color "PURPLE" "Model Selection" "header"
     
     # Create directory with animation
     echo -e "${YELLOW}Creating model directories...${NC}"
@@ -834,7 +833,7 @@ model_selection_menu() {
     echo -e "│ ${WHITE}Available Models${BOLD_PURPLE}                                         │"
     echo -e "└─────────────────────────────────────────────────────────┘${NC}"
     echo
-    print_color "BOLD_CYAN" "Select models to download:" "info"
+    print_color "BOLD_YELLOW" "Select models to download:" "info"
     print_color "BOLD_YELLOW" "Required components are marked accordingly." "warning"
     echo
     
@@ -853,11 +852,11 @@ model_selection_menu() {
     done
     
     echo
-    read -p "$(echo -e ${BOLD_GREEN}Enter numbers for models to download \(space-separated, or 'a' for all\):${NC} )" -r choices
+    read -p "$(echo -e ${BOLD_YELLOW}Enter numbers for models to download \(space-separated, or 'a' for all\):${NC} )" -r choices
     echo
     
     if [[ $choices == "a" || $choices == "A" ]]; then
-        animate_text "Selecting all models..." "BOLD_GREEN"
+        animate_text "Selecting all models..." "BOLD_YELLOW"
         for i in "${!models[@]}"; do
                 selected+=($i)
         done
@@ -876,7 +875,7 @@ model_selection_menu() {
     fi
     
     echo
-    print_color "BOLD_CYAN" "Download Summary" "subheader"
+    print_color "BOLD_YELLOW" "Download Summary" "subheader"
     echo -e "${BOLD_WHITE}Selected models to download:${NC}"
     
     for idx in "${selected[@]}"; do
@@ -887,7 +886,7 @@ model_selection_menu() {
     
     echo
     print_color "BOLD_YELLOW" "Starting downloads..." "info"
-    echo -e "${BOLD_CYAN}This may take a while depending on your internet connection and model sizes.${NC}"
+    echo -e "${BOLD_YELLOW}This may take a while depending on your internet connection and model sizes.${NC}"
     echo
     
     # Clear any leftover progress bars or spinners
@@ -907,7 +906,7 @@ model_selection_menu() {
             url="https://$url"
         fi
         
-        echo -e "${BOLD_CYAN}Debug - Final URL: ${WHITE}$url${NC}"
+        echo -e "${BOLD_PURPLE}Debug - Final URL: ${YELLOW}$url${NC}"
         
         # Final validation check
         if [[ ! "$url" =~ ^https?://[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/ ]]; then
@@ -950,7 +949,7 @@ model_selection_menu() {
         
         # Full path debugging
         local full_path="$(pwd)/$dest_path"
-        echo -e "${BOLD_CYAN}Full destination path: ${WHITE}$full_path${NC}"
+        echo -e "${BOLD_PURPLE}Full destination path: ${YELLOW}$full_path${NC}"
         
         # Check if file already exists
         if [ -f "$dest_path" ]; then
@@ -979,8 +978,8 @@ model_selection_menu() {
         
         # Create fancy download indicator with divider to separate from previous output
         echo -e "${BOLD_WHITE}────────────────────────────────────────────────────────────────${NC}"
-        echo -e "${BOLD_BLUE}┌─────────────────────────────────────────────────────────┐"
-        echo -e "│ ${WHITE}Downloading: ${BOLD_CYAN}$name${BOLD_BLUE}                                     │"
+        echo -e "${BOLD_PURPLE}┌─────────────────────────────────────────────────────────┐"
+        echo -e "│ ${WHITE}Downloading: ${BOLD_CYAN}$name${BOLD_PURPLE}                                     │"
         echo -e "└─────────────────────────────────────────────────────────┘${NC}"
         echo -e "${BOLD_WHITE}Source: ${CYAN}$url${NC}"
         echo -e "${BOLD_WHITE}Destination: ${CYAN}$dest_path${NC}"
@@ -1018,11 +1017,11 @@ model_selection_menu() {
             local temp_file="/tmp/diffugen_download_$$.part"
             
             # Clean up the terminal for proper progress display
-            echo -e "${BOLD_CYAN}Preparing to download...${NC}"
+            echo -e "${BOLD_PURPLE}Preparing to download...${NC}"
             
             # Create clear visual separation before the progress bar
-            echo -e "${BOLD_BLUE}┌────────────────────────────────────────────────────┐"
-            echo -e "│ ${WHITE}Download Progress${BOLD_BLUE}                                  │"
+            echo -e "${BOLD_PURPLE}┌────────────────────────────────────────────────────┐"
+            echo -e "│ ${WHITE}Download Progress${BOLD_PURPLE}                                  │"
             echo -e "└────────────────────────────────────────────────────┘${NC}"
             
             # Wait a moment for the terminal to be ready
@@ -1040,7 +1039,7 @@ model_selection_menu() {
             if [ $curl_status -eq 0 ]; then
                 # Move from temporary location to final destination
                 if [ -f "$temp_file" ]; then
-                    echo -e "${BOLD_CYAN}Moving file to final destination...${NC}"
+                    echo -e "${BOLD_PURPLE}Moving file to final destination...${NC}"
                     mv "$temp_file" "$dest_path"
                     move_status=$?
                     
@@ -1048,7 +1047,7 @@ model_selection_menu() {
                         download_success=true
                         # Get file size for confirmation
                         local file_size=$(du -h "$dest_path" | cut -f1)
-                        echo -e "\n${BOLD_GREEN}✅ Download complete: ${WHITE}$name ${BOLD_GREEN}(${CYAN}$file_size${BOLD_GREEN})${NC}"
+                        echo -e "\n${BOLD_GREEN}✅ Download complete: ${WHITE}$name ${BOLD_GREEN}(${YELLOW}$file_size${BOLD_GREEN})${NC}"
                         echo -e "${BOLD_WHITE}File saved to: ${CYAN}$dest_path${NC}"
                         echo -e "${BOLD_WHITE}Verifying file integrity...${NC}"
                         
@@ -1129,7 +1128,7 @@ model_selection_menu() {
     done
     
     # After all downloads, verify that files were actually saved
-    echo -e "${BOLD_CYAN}Verifying downloaded models...${NC}"
+    echo -e "${BOLD_PURPLE}Verifying downloaded models...${NC}"
     echo -e "${BOLD_WHITE}Checking models directory: stable-diffusion.cpp/models/${NC}"
     ls -la stable-diffusion.cpp/models/
     echo -e "${BOLD_WHITE}Checking flux directory: stable-diffusion.cpp/models/flux/${NC}"
@@ -1172,18 +1171,20 @@ display_tui_menu() {
         clear
     fi
     
-    echo -e "${CYAN}===== DiffuGen Setup Menu =====${NC}"
-    echo "1. Install dependencies"
-    echo "2. Clone/update stable-diffusion.cpp"
-    echo "3. Build stable-diffusion.cpp"
-    echo "4. Set up Python environment"
-    echo "5. Download models"
-    echo "6. Update configuration files"
-    echo "7. Run all steps (recommended)"
-    echo "8. Exit"
+    echo -e "${BOLD_PURPLE}===== DiffuGen Setup Menu ====="
+    echo -e "${YELLOW}1. Install dependencies"
+    echo -e "${YELLOW}2. Clone/update stable-diffusion.cpp"
+    echo -e "${YELLOW}3. Build stable-diffusion.cpp"
+    echo -e "${YELLOW}4. Set up Python environment"
+    echo -e "${YELLOW}5. Download models"
+    echo -e "${YELLOW}6. Update configuration files"
+    echo -e "${BOLD_YELLOW}7. Run all steps ${PURPLE}(recommended)"
+    echo -e "${RED}8. ${BOLD_RED}Exit"
     echo
     
-    read -p "Enter your choice (1-8): " choice
+    echo -ne "${YELLOW}Enter your choice ${BOLD_PURPLE}(${BOLD_PURPLE}1${BOLD_PURPLE}-${BOLD_PURPLE}8${BOLD_PURPLE}): ${BOLD_PURPLE}"
+    read choice
+    echo -ne "${NC}"
     echo
     
     case $choice in
