@@ -1172,6 +1172,7 @@ display_tui_menu() {
     fi
     
     echo -e "${BOLD_PURPLE}===== DiffuGen Setup Menu ====="
+
     echo -e "${YELLOW}1. Install dependencies"
     echo -e "${YELLOW}2. Clone/update stable-diffusion.cpp"
     echo -e "${YELLOW}3. Build stable-diffusion.cpp"
@@ -1180,6 +1181,7 @@ display_tui_menu() {
     echo -e "${YELLOW}6. Update configuration files"
     echo -e "${BOLD_YELLOW}7. Run all steps ${PURPLE}(recommended)"
     echo -e "${RED}8. ${BOLD_RED}Exit"
+    echo -e "${PURPLE}9. ${BOLD_PURPLE}Display Guide"
     echo
     
     echo -ne "${YELLOW}Enter your choice ${BOLD_PURPLE}(${BOLD_PURPLE}1${BOLD_PURPLE}-${BOLD_PURPLE}8${BOLD_PURPLE}): ${BOLD_PURPLE}"
@@ -1243,6 +1245,11 @@ display_tui_menu() {
             read -p "Press Enter to continue..."
             display_tui_menu
             ;;
+        9)  
+            show_completion_guide            
+            read -p "Press Enter to continue..."
+            display_tui_menu
+            ;;    
     esac
 }
 
@@ -1251,9 +1258,9 @@ show_completion_guide() {
     print_color "GREEN" "✅ DiffuGen Setup Successfully Completed! ✅" "success"
 echo
 
-print_color "CYAN" "╔════════════════════════════════════════════════════════════╗"
-print_color "CYAN" "║                     COMPREHENSIVE GUIDE                    ║"
-print_color "CYAN" "╚════════════════════════════════════════════════════════════╝"
+print_color "PURPLE" "╔════════════════════════════════════════════════════════════╗"
+print_color "PURPLE" "║                     COMPREHENSIVE GUIDE                    ║"
+print_color "PURPLE" "╚════════════════════════════════════════════════════════════╝"
 echo
 
 echo
