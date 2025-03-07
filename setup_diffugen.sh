@@ -718,7 +718,22 @@ run_with_error_handling() {
     # Set the critical operation flag to true with the determined type
     set_critical_operation true "$operation_type"
     
-    if ! "$@"; then
+    # Execute the command and capture its return code
+    "$@"
+    local return_code=$?
+    
+    # Reset the critical operation flag
+    set_critical_operation false
+    
+    if [ $return_code -eq 0 ]; then
+        # Success
+        print_color "BOLD_GREEN" "Completed: $cmd_description" "success"
+    elif [ $return_code -eq 2 ] && [[ "$cmd_description" == *"Downloading models"* ]]; then
+        # Special case: model selection with no models selected/downloaded
+        # Don't show a completion message for this case
+        return 0
+    else
+        # Error occurred
         local error_message="Failed during: $cmd_description"
         
         # Determine error type if not provided
@@ -745,16 +760,8 @@ run_with_error_handling() {
             esac
         fi
         
-        # Reset the critical operation flag before cleanup
-        set_critical_operation false
-        
         cleanup "$error_message" "$error_type"
     fi
-    
-    # Reset the critical operation flag
-    set_critical_operation false
-    
-    print_color "BOLD_GREEN" "Completed: $cmd_description" "success"
 }
 
 # Function to clone or update stable-diffusion.cpp with enhanced visuals
@@ -1119,16 +1126,17 @@ model_selection_menu() {
     # Handle no selection
     if [ -z "$model_choice" ]; then
         echo
-        print_color "YELLOW" "No models selected. Returning to main menu." "warning"
-        echo
-        read -p "Press Enter to continue..."
-        return
+        print_color "YELLOW" "⚠ No models selected. Returning to main menu." "warning"
+        return 2  # Return code 2 indicates no models were selected
     fi
     
     # Handle 'a' for all
     if [ "$model_choice" = "a" ]; then
         model_choice="1 2 3 4 5 6 7 8"
     fi
+    
+    # Flag to track if any models were actually downloaded
+    local models_downloaded=false
     
     # Process each selection
     for choice in $model_choice; do
@@ -1149,6 +1157,9 @@ model_selection_menu() {
             # Download the model
             download_model "$model_filename"
             
+            # Mark that we downloaded at least one model
+            models_downloaded=true
+            
             # Clear current download tracking after successful completion
             current_model_name=""
             current_download_file=""
@@ -1159,9 +1170,18 @@ model_selection_menu() {
     done
     
     echo
-    print_color "BOLD_GREEN" "✓ Model download process complete" "success"
-    echo
-    read -p "Press Enter to continue..."
+    
+    if [ "$models_downloaded" = true ]; then
+        print_color "BOLD_GREEN" "✓ Model download process complete" "success"
+        echo
+        read -p "Press Enter to continue..."
+        return 0  # Return success
+    else
+        print_color "YELLOW" "No valid models were selected for download." "warning"
+        echo
+        read -p "Press Enter to continue..."
+        return 2  # Return code 2 indicates no models were downloaded
+    fi
 }
 
 # Function to download a specific model
@@ -1753,7 +1773,7 @@ check_model_integrity() {
                 fi
                 
                 # Display result for this file
-                echo -e "${BOLD_WHITE}║ ${BOLD_YELLOW}${display_name}${NC}$(printf '%*s' $((30 - ${#display_name})) "") ${BOLD_GREEN}${file_size}${NC}$(printf '%*s' $((12 - ${#file_size})) "") ${status_color}${integrity_status}${NC}$(printf '%*s' $((15 - ${#integrity_status})) "") ${BOLD_WHITE}║${NC}"
+                echo -e "${BOLD_WHITE}║ ${BOLD_YELLOW}${display_name}${NC}$(printf '%*s' $((30 - ${#display_name})) "") ${BOLD_GREEN}${file_size}${NC}$(printf '%*s' $((12 - ${#file_size})) "") ${status_color}${integrity_status}${NC}$(printf '%*s' $((15 - ${#integrity_status})) "") ${BOLD_WHITE}${NC}"
                 
                 checked_count=$((checked_count + 1))
             done

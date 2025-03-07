@@ -23,6 +23,7 @@
 - [Installation](#-installation)
   - [Automatic Installation](#automatic-installation)
   - [Manual Installation](#manual-installation)
+  - [Manual Model Download](#manual-model-download)
   - [Cross-Platform Considerations](#cross-platform-considerations)
 - [Usage](#-usage)
   - [MCP Integration](#mcp-integration)
@@ -37,6 +38,7 @@
   - [Common Issues](#common-issues)
   - [Error Messages](#error-messages)
   - [Log Files](#log-files)
+  - [Interrupt Handling](#interrupt-handling)
 - [Advanced Usage](#-advanced-usage)
   - [Custom Models](#custom-models)
   - [Batch Processing](#batch-processing)
@@ -44,6 +46,7 @@
 - [Uninstallation](#-uninstallation)
 - [Contributing](#-contributing)
 - [License](#-license)
+- [Recent Updates](#-recent-updates)
 - [Acknowledgments](#-acknowledgments)
 - [Contact](#-contact)
 
@@ -67,6 +70,10 @@ Built on top of the highly optimized [stable-diffusion.cpp](https://github.com/l
   - Sampling methods
 - **CUDA Acceleration**: Utilizes GPU acceleration for faster image generation
 - **Natural Language Interface**: Generate images using simple natural language commands
+- **Smart Error Recovery**: Robust error handling with operation-aware recovery procedures
+- **User-Friendly Setup**: Interactive setup script with improved interrupt handling
+- **Resource Tracking**: Session-aware resource management for efficient cleanup
+- **Customizable Interface**: Support for custom ANSI art logos and visual enhancements
 
 ## 💻 System Requirements
 
@@ -162,6 +169,39 @@ The setup script will:
 - Set up a Python virtual environment
 - Download selected models
 - Configure file paths for your system
+
+#### Setup Script Features
+
+Our enhanced setup script includes:
+
+- **Smart Interrupt Handling**: Safely cancel operations with Ctrl+C at any point without corrupting your system:
+  - Clean exit from menus with a simple "Operation cancelled by user" message
+  - Smart detection of partial downloads if interrupting model downloads
+  - Contextual recovery based on which operation was interrupted
+
+- **Session-Aware Resource Tracking**:
+  - Tracks resources created only during the current session
+  - Only offers to clean up files created in the current run
+  - Protects valuable models and configurations from previous sessions
+  - Variables like `TEMP_FILES_CREATED_THIS_SESSION` and `VENV_CREATED_THIS_SESSION` ensure safety
+
+- **Enhanced Error Recovery**:
+  - Operation-specific error handling using operation typing
+  - Clear, context-aware error messages that explain what went wrong
+  - Graceful recovery from dependency installation failures
+  - Intelligent handling of build errors with detailed diagnostics
+
+- **Improved Model Management**:
+  - Comprehensive model selection menu with details about each model
+  - Displays model size, type, and download status in a well-formatted table
+  - Tracks current download progress with `current_model_name` and `current_download_file`
+  - Proper cleanup of partial downloads if interrupted
+
+- **Visual Enhancements**:
+  - Color-coded status messages for better readability
+  - Support for custom ANSI art logos using a heredoc approach
+  - Animated progress indicators during lengthy operations
+  - Clear formatting of menus and options
 
 ### Manual Installation
 
@@ -549,6 +589,136 @@ Logs are stored in the following locations:
 - Build logs: `stable-diffusion.cpp/build/build.log`
 - Runtime logs: `logs/diffugen.log`
 
+### Interrupt Handling
+
+DiffuGen has been designed with robust interrupt handling to ensure a smooth user experience:
+
+- **Clean Cancellation**: Press Ctrl+C at any time to safely cancel the current operation
+- **Context-Aware Interrupts**: Different handling based on where in the process you are:
+  - From the main menu: Clean exit with a simple message
+  - During downloads: Information about partial downloads with cleanup options
+  - During critical operations: Safe cleanup of all resources created in the current session
+
+If you cancel a model download, the script will:
+1. Detect any partial download files
+2. Show you their location and size
+3. Offer to remove these incomplete files
+4. Return you to the main menu
+
+This prevents both resource leaks and accidental removal of important files from previous sessions.
+
+### Error Handling Improvements
+
+Our enhanced error handling system provides several benefits:
+
+- **Operation Type Detection**: The script identifies the type of operation being performed (e.g., dependency installation, model downloading, Python setup) and tailors error messages accordingly
+- **Specific Error Messages**: Instead of generic error messages, you receive context-specific information about what went wrong
+- **Graceful Failure Recovery**: The script attempts to recover from non-critical failures without requiring a full restart
+- **Resource Cleanup**: Upon errors, the script properly cleans up temporary files and resources created during the failed operation
+
+Example scenarios where this helps:
+
+1. **During Model Downloads**: If a download fails due to network issues, the script identifies the partial download, provides information about it, and offers cleanup options
+2. **During Dependency Installation**: If a dependency fails to install, the script identifies which one and provides specific troubleshooting tips
+3. **During Build Process**: If the build process fails, the script analyzes the error logs and suggests specific fixes
+
+### Error and Interrupt Handling Examples
+
+#### Example 1: Canceling from Main Menu
+
+When pressing Ctrl+C from the main menu, instead of a cryptic error, you now see:
+```
+Operation cancelled by user. Exiting...
+```
+
+#### Example 2: Canceling a Model Download
+
+When interrupting a model download in progress:
+```
+Download cancelled by user.
+
+Partial download detected:
+- File: stable-diffusion.cpp/models/flux/flux1-dev-q8_0.gguf
+- Size: 1.2 GB (partially downloaded)
+- Status: Incomplete
+
+Would you like to:
+1) Keep the partial download (you can resume later)
+2) Delete the partial download
+3) Return to main menu
+
+Your choice:
+```
+
+#### Example 3: Network Error During Download
+
+When a network error occurs during download:
+```
+ERROR: Network connection interrupted during model download.
+
+The following file was partially downloaded:
+- File: stable-diffusion.cpp/models/sd_xl_base_1.0.safetensors
+- Progress: 2.3 GB of 6.7 GB (34%)
+- Error: Connection timeout after 30 seconds
+
+Troubleshooting suggestions:
+- Check your internet connection
+- Try again with a wired connection if possible
+- The download can be resumed from where it left off
+
+Would you like to:
+1) Retry the download (will resume from 2.3 GB)
+2) Skip this model and continue with others
+3) Return to main menu
+
+Your choice:
+```
+
+#### Example 4: Dependency Installation Error
+
+When a dependency installation fails:
+```
+ERROR: Failed to install dependency: cmake
+
+Error details:
+- Package: cmake (version 3.18+)
+- Error code: 100
+- Reason: Repository not found
+
+Troubleshooting suggestions:
+- Check your internet connection
+- Ensure apt sources are properly configured
+- Try running 'sudo apt update' before retrying
+- You can manually install with: sudo apt-get install cmake
+
+Would you like to:
+1) Retry installation
+2) Skip this dependency (not recommended)
+3) Exit and resolve manually
+
+Your choice:
+```
+
+These contextual error messages provide clear information about what went wrong and offer specific suggestions tailored to the actual issue, greatly improving the user experience when problems occur.
+
+### Customizing the ANSI Art Logo
+
+DiffuGen supports adding your own custom ANSI art logo to the setup script. To add or modify the logo:
+
+1. Open `setup_diffugen.sh` in a text editor
+2. Locate the ANSI art heredoc section near the top of the file:
+   
+   ```bash
+   read -r -d '' ANSI_LOGO << 'ENDOFANSI'
+   ANSI GOES HERE
+   ENDOFANSI
+   ```
+
+3. Replace `ANSI GOES HERE` with your ANSI art
+4. Make sure to leave the `ENDOFANSI` delimiter exactly as is
+
+The heredoc approach ensures your ANSI art with all its escape sequences, color codes, and special characters will be displayed correctly without causing syntax errors in the script.
+
 ## 🧠 Advanced Usage
 
 ### Custom Models
@@ -625,6 +795,99 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 * HuggingFace.co is used to download models and is not affiliated in any way with CLOUDWERX.DEV
 
 * Please include our LICENSE if you are planning on distributing or modifying to simply track the source, this work is fully open source and I hope you all make amazing things with this codebase!
+
+## 📄 Recent Updates
+
+### v1.0.2 Enhancements (August 2023)
+
+- **Improved Error Handling**: Enhanced error recovery with operation-specific handling
+- **Smart Interrupt Management**: Context-aware Ctrl+C handling for better user experience
+- **Session-Based Resource Tracking**: Only cleanup resources created in current session
+- **Enhanced Model Selection**: Reorganized model selection menu with better information
+- **Partial Download Management**: Better handling of interrupted downloads
+- **Visual Improvements**: Added support for custom ANSI art and improved terminal UI
+- **User-Friendly Messaging**: Simplified and clarified user feedback messages
+- **Virtual Environment Management**: Better detection and reuse of existing virtual environments
+- **Menu Navigation Experience**: Improved menu design with clearer options and better formatting
+- **Download Progress Tracking**: Enhanced progress indicators showing download speed and ETA
+- **Backward Compatibility**: Full compatibility with existing installations and previously downloaded models
+
+### Improved Menu Navigation
+
+The setup script now features an enhanced navigation experience:
+
+- **Clear Menu Structure**: Better organized main menu with numbered options
+- **Contextual Help**: Each menu option now includes a brief description of what it does
+- **Persistent State**: The script remembers your position when you return to menus
+- **Quick Navigation**: Added keyboard shortcuts for common operations
+- **Visual Hierarchy**: Color-coded options based on their importance and status
+- **Breadcrumb Navigation**: Shows your current location in multi-level menus
+
+### Enhanced Download Experience
+
+Model downloads now provide much more detailed feedback:
+
+- **Progress Percentage**: Clear percentage indicator for each download
+- **Transfer Speed**: Real-time display of download speed (MB/s)
+- **ETA Calculation**: Estimated time remaining for downloads
+- **Size Comparison**: Shows downloaded size versus total size
+- **Multi-model Queue**: When downloading multiple models, shows queue position and overall progress
+- **Resumable Downloads**: Ability to resume interrupted downloads when possible
+
+### Improved Model Selection Menu
+
+The model selection interface has been completely redesigned for better usability:
+
+- **Tabular Format**: Models displayed in a well-organized table with columns for:
+  - Model number
+  - Model name
+  - File size (with human-readable formatting)
+  - Model type (Flux, SDXL, SD15, etc.)
+  - Download status (with color coding)
+
+- **Detailed Information**: Each model entry includes:
+  - Clear description of the model's purpose and quality characteristics
+  - Size information to help with storage planning
+  - Visual indicators of download status (Downloaded/Not Downloaded)
+
+- **Batch Selection**: Select multiple models with a single command
+  - Use 'a' to select all models
+  - Use comma-separated numbers for specific models
+  - Use number ranges for sequential selection
+
+- **Smart Status Detection**: Automatically detects:
+  - Already downloaded models
+  - Partially downloaded models
+  - Required dependencies for each model
+  - Model compatibility with your system
+
+- **Size Summaries**: Displays total disk space required for selected models
+
+Example of the model selection table:
+```
+╔════════════════════════════════════════════════════════════════════════════════════╗
+║                                MODEL SELECTION MENU                                ║
+╠════════════════════════════════════════════════════════════════════════════════════╣
+║ #  │ Model Name                     │ Size     │ Type        │ Status              ║
+╠════════════════════════════════════════════════════════════════════════════════════╣
+║ 1  │ flux1-schnell-q8_0.gguf        │ 1.5 GB   │ Flux        │ ✅ Downloaded       ║
+║ 2  │ flux1-dev-q8_0.gguf            │ 3.9 GB   │ Flux        │ ❌ Not Downloaded   ║
+║ 3  │ sd_xl_base_1.0.safetensors     │ 6.7 GB   │ SDXL        │ ❌ Not Downloaded   ║
+║ 4  │ sd_v1.5-pruned-emaonly.sft     │ 1.5 GB   │ SD15        │ ✅ Downloaded       ║
+╠════════════════════════════════════════════════════════════════════════════════════╣
+║ Total: 4 models, Total size: 13.6 GB                                               ║
+╚════════════════════════════════════════════════════════════════════════════════════╝
+```
+
+### Backward Compatibility
+
+The enhanced setup script maintains full compatibility with existing installations:
+
+- **Preserves Existing Models**: Detects and respects previously downloaded models
+- **Configuration Retention**: Maintains your existing configuration settings
+- **Non-destructive Updates**: Script improvements don't affect your existing setup
+- **Migration Support**: For users with older installations, gracefully migrates settings
+- **Selective Updates**: Option to update only specific components of your installation
 
 ## 🙏 Acknowledgments
 
