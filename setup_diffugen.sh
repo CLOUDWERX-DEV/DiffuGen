@@ -9,7 +9,7 @@
 # Define ANSI art with heredoc for safe inclusion
 read -r -d '' ANSI_LOGO << 'ENDOFANSI'
 \e[49m \e[38;5;232;49m▄\e[38;5;233;49m▄\e[38;5;233;48;5;232m▄\e[38;5;233;48;5;233m▄\e[48;5;233m \e[38;5;233;48;5;233m▄▄▄▄▄▄▄▄▄\e[48;5;233m  \e[38;5;233;48;5;233m▄▄▄▄▄\e[38;5;233;49m▄▄\e[49m \e[m
-\e[38;5;233;49m▄\e[38;5;233;48;5;233m▄▄\e[38;5;203;48;5;233m▄\e[38;5;203;48;5;167m▄\e[38;5;203;48;5;203m▄\e[38;5;209;48;5;209m▄▄▄▄\e[38;5;215;48;5;209m▄\e[38;5;215;48;5;215m▄▄\e[38;5;216;48;5;216m▄▄\e[38;5;216;48;5;222m▄\e[38;5;215;48;5;222m▄\e[38;5;215;48;5;215m▄▄▄▄\e[38;5;221;48;5;233m▄\e[38;5;233;48;5;233m▄▄\e[38;5;233;49m▄\e[m
+\e[38;5;233;49m▄\e[38;5;233;48;5;233m▄▄\e[38;5;203;48;5;233m▄\e[38;5;203;48;5;167m▄\e[38;5;203;48;5;203m▄\e[38;5;209;48;5;209m▄▄▄▄\e[38;5;215;48;5;209m▄\e[38;5;215;48;5;215m▄▄\e[38;5;216;48;5;216m▄▄\e[38;5;216;48;5;222m▄\e[38;5;215;48;5;222m▄\e[38;5;215;48;5;215m▄▄▄▄\e[38;5;221;48;5;233m▄\e[38;5;233;48;5;233m▄\e[38;5;233;49m▄\e[m
 \e[38;5;233;48;5;233m▄\e[38;5;234;48;5;234m▄\e[38;5;203;48;5;167m▄\e[38;5;203;48;5;203m▄▄▄\e[38;5;209;48;5;209m▄▄▄▄\e[38;5;215;48;5;215m▄▄\e[38;5;215;48;5;216m▄\e[38;5;215;48;5;215m▄▄▄▄▄▄▄▄▄\e[38;5;215;48;5;179m▄\e[38;5;234;48;5;233m▄\e[38;5;233;48;5;233m▄\e[m
 \e[38;5;233;48;5;233m▄\e[38;5;233;48;5;234m▄\e[38;5;203;48;5;203m▄▄▄▄\e[38;5;209;48;5;209m▄▄▄▄\e[38;5;131;48;5;215m▄\e[38;5;235;48;5;209m▄\e[38;5;234;48;5;137m▄\e[38;5;235;48;5;215m▄\e[38;5;137;48;5;215m▄\e[38;5;215;48;5;215m▄▄▄▄▄▄▄▄\e[48;5;234m \e[48;5;233m \e[m
 \e[48;5;233m  \e[38;5;203;48;5;203m▄▄▄▄\e[38;5;203;48;5;209m▄\e[38;5;237;48;5;209m▄\e[38;5;235;48;5;131m▄\e[38;5;234;48;5;236m▄\e[38;5;233;48;5;234m▄\e[38;5;0;48;5;234m▄\e[49;38;5;233m▀\e[38;5;0;48;5;234m▄\e[38;5;233;48;5;234m▄\e[38;5;234;48;5;238m▄\e[38;5;235;48;5;137m▄\e[38;5;94;48;5;215m▄\e[38;5;215;48;5;215m▄▄▄▄▄\e[38;5;233;48;5;234m▄\e[38;5;233;48;5;233m▄\e[m
@@ -198,8 +198,8 @@ display_logo() {
     clear
     
     echo -e "${YELLOW_BG}"
-    echo -e "                                         ${BOLD_PURPLE} {´◕ ◡ ◕｀}                                               "
-    echo -e "                                  ${BOLD_PURPLE}[ DiffuGen Setup Utility ]                                       "
+    echo -e "                                           ${BOLD_PURPLE} {´◕ ◡ ◕｀}                                             "
+    echo -e "                                    ${BOLD_PURPLE}[ DiffuGen Setup Utility ]                                     "
     echo -e "${NC}"
     # Display the ANSI art logo centered
     # Calculate terminal width for centering
@@ -207,7 +207,7 @@ display_logo() {
     # The ANSI art is approximately 80 columns wide
     ANSI_WIDTH=25
     # Calculate padding needed to center the ANSI art
-    PADDING=$(( (TERM_WIDTH - ANSI_WIDTH) / 5 ))
+    PADDING=$(( (TERM_WIDTH - ANSI_WIDTH) / 4 ))
 
     # Apply padding by adding spaces before each line of the ANSI art
     if [ $PADDING -gt 0 ]; then
@@ -217,27 +217,27 @@ display_logo() {
         echo -e "$ANSI_LOGO"
     fi
     
-echo -e "${BOLD_PURPLE}"   
-            echo  "              ______ ________________ _______          _______________       "
-            sleep 0.1
-            echo "              (  __  \\__   __(  ____ (  ____ \\       /( ____ (  ____ ( (     /|"
-            sleep 0.1
-            echo -e "${YELLOW}              | (  \  )  ) (  | (    \/ (    \/ )   ( | (    \/ (    \/  \  ( |"
-            echo "              | |   ) |  | |  | (__   | (__   | |   | | |     | (__   |   \ | |"
-            sleep 0.1
-            echo "              | |   | |  | |  |  __)  |  __)  | |   | | | ____|  __)  | (\ \) |"
-            sleep 0.1
-            echo "              | |   ) |  | |  | (     | (     | |   | | | \_  ) (     | | \   |"
-            sleep 0.1
-            echo -e "${BOLD_PURPLE}              | (__/  )__) (__| )     | )     | (___) | (___) | (____/\ )  \  |"
-            sleep 0.1
-            echo "              (______/\_______//      |/      (_______|_______|_______//    )_)"
-            echo -e "${NC}"
+ echo -e "${BOLD_PURPLE}"   
+               echo  "              ______ ________________ _______          _______________       "
+               sleep 0.1
+               echo "              (  __  \\__   __(  ____ (  ____ \\       /( ____ (  ____ ( (     /|"
+               sleep 0.1
+               echo -e "${YELLOW}              | (  \  )  ) (  | (    \/ (    \/ )   ( | (    \/ (    \/  \  ( |"
+               echo "              | |   ) |  | |  | (__   | (__   | |   | | |     | (__   |   \ | |"
+               sleep 0.1
+               echo "              | |   | |  | |  |  __)  |  __)  | |   | | | ____|  __)  | (\ \) |"
+               sleep 0.1
+               echo "              | |   ) |  | |  | (     | (     | |   | | | \_  ) (     | | \   |"
+               sleep 0.1
+               echo -e "${BOLD_PURPLE}              | (__/  )__) (__| )     | )     | (___) | (___) | (____/\ )  \  |"
+               sleep 0.1
+               echo "              (______/\_______//      |/      (_______|_______|_______//    )_)"
+               echo -e "${NC}"
 
 
     
    box "Advanced Stable Diffusion Image Generator Designed For MCP Tool Usage & CLI Image Generation" "BOLD_PURPLE"
-   animate_text "Made with ❤️  by CLOUDWERX LAB - VIsit us at http://cloudwerx.dev | http://github.com/CLOUDWERX-DEV" "BOLD_YELLOW"
+   animate_text "Made with ❤️  by CLOUDWERX LAB - Visit us at http://cloudwerx.dev | http://github.com/CLOUDWERX-DEV" "BOLD_YELLOW"
 
 echo -e  -------------------------------  "${BOLD_CYAN}\"${BOLD_GREEN}Digital Food "${WHITE}"for the ${BOLD_PURPLE}Analog Soul${BOLD_CYAN}\"${NC}"  -------------------------------
     echo
@@ -1274,11 +1274,12 @@ display_tui_menu() {
     echo -e "${YELLOW}5. Download models"
     echo -e "${YELLOW}6. Update configuration files"
     echo -e "${BOLD_YELLOW}7. Run all steps ${PURPLE}(recommended)"
-    echo -e "${PURPLE}8. ${BOLD_PURPLE}Display Guide"
-    echo -e "${RED}9. ${BOLD_RED}Exit"
+    echo -e "${YELLOW}8. ${YELLOW}Model Manager"
+    echo -e "${PURPLE}9. ${BOLD_PURPLE}Display Guide"
+    echo -e "${RED}10. ${BOLD_RED}Exit"
     echo
     
-    echo -ne "${YELLOW}Enter your choice ${BOLD_PURPLE}(${BOLD_PURPLE}1${BOLD_PURPLE}-${BOLD_PURPLE}9${BOLD_PURPLE}): ${BOLD_PURPLE}"
+    echo -ne "${YELLOW}Enter your choice ${BOLD_PURPLE}(${BOLD_PURPLE}1${BOLD_PURPLE}-${BOLD_PURPLE}10${BOLD_PURPLE}): ${BOLD_PURPLE}"
     read choice
     echo -ne "${NC}"
     echo
@@ -1331,12 +1332,16 @@ display_tui_menu() {
             display_tui_menu
             ;;
         8)
+            run_with_error_handling "Managing models" "" model_manager
+            display_tui_menu
+            ;;
+        9)
             show_completion_guide            
             # Return to the menu with full logo display
             MENU_DISPLAYED=""
             display_tui_menu
             ;;    
-        9)
+        10)
             print_color "YELLOW" "Exiting DiffuGen setup." "warning"
             exit 0
             ;;
@@ -1346,6 +1351,717 @@ display_tui_menu() {
             display_tui_menu
             ;;    
     esac
+}
+
+# Model Manager function
+model_manager() {
+    # Set MODELS_DIR if not already set
+    if [ -z "$MODELS_DIR" ]; then
+        MODELS_DIR="./stable-diffusion.cpp/models"
+    fi
+    
+    local submenu_choice
+    local exit_submenu=false
+    
+    while [ "$exit_submenu" = false ]; do
+        clear
+        print_color "BOLD_CYAN" "MODEL MANAGER" "header"
+        echo -e "${BOLD_WHITE}Manage your installed models${NC}"
+        echo
+        
+        # Check if the models directory exists
+        if [ ! -d "$MODELS_DIR" ]; then
+            print_color "YELLOW" "Models directory not found at: $MODELS_DIR" "warning"
+            echo -e "${BOLD_WHITE}Would you like to create it?${NC}"
+            read -p "$(echo -e ${BOLD_YELLOW}Create models directory? \(y/n\)${NC} )" -n 1 -r
+            echo
+            
+            if [[ $REPLY =~ ^[Yy]$ ]]; then
+                mkdir -p "$MODELS_DIR"
+                if [ -d "$MODELS_DIR" ]; then
+                    print_color "BOLD_GREEN" "✓ Models directory created successfully" "success"
+                else
+                    print_color "BOLD_RED" "✗ Failed to create models directory" "error"
+                    read -p "Press Enter to return to main menu..."
+                    return 1
+                fi
+            else
+                print_color "YELLOW" "Models directory is required for model management." "warning"
+                read -p "Press Enter to return to main menu..."
+                return 1
+            fi
+        fi
+        
+        # Display the submenu
+        echo -e "${BOLD_PURPLE}===== Model Management Options ====="
+        echo -e "${YELLOW}1. View installed models"
+        echo -e "${YELLOW}2. Delete models"
+        echo -e "${YELLOW}3. Check model integrity"
+        echo -e "${YELLOW}4. View detailed model information"
+        echo -e "${RED}5. Return to main menu"
+        echo
+        
+        echo -ne "${YELLOW}Enter your choice ${BOLD_PURPLE}(${BOLD_PURPLE}1${BOLD_PURPLE}-${BOLD_PURPLE}5${BOLD_PURPLE}): ${BOLD_PURPLE}"
+        read submenu_choice
+        echo -ne "${NC}"
+        echo
+        
+        case $submenu_choice in
+            1)
+                view_installed_models
+                ;;
+            2)
+                delete_model
+                ;;
+            3)
+                check_model_integrity
+                ;;
+            4)
+                view_model_details
+                ;;
+            5)
+                exit_submenu=true
+                ;;
+            *)
+                print_color "RED" "Invalid choice. Please try again." "error"
+                read -p "Press Enter to continue..."
+                ;;
+        esac
+    done
+}
+
+# Function to view installed models
+view_installed_models() {
+    clear
+    print_color "BOLD_CYAN" "INSTALLED MODELS" "header"
+    
+    # Check if models directory exists
+    if [ ! -d "$MODELS_DIR" ]; then
+        print_color "RED" "Models directory not found at: $MODELS_DIR" "error"
+        read -p "Press Enter to continue..."
+        return 1
+    fi
+    
+    # Count models
+    local model_count=0
+    local total_size=0
+    
+    # Define table width and column widths
+    local table_width=80  # Increased overall table width
+    local num_width=3
+    local name_width=35   # Increased model name width
+    local size_width=10
+    local type_width=15
+    local status_width=10
+    
+    # Header for the table
+    echo -e "${BOLD_WHITE}╔════════════════════════════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BOLD_WHITE}║ ${BOLD_CYAN}Models found in:${BOLD_WHITE} $MODELS_DIR${NC}$(printf '%*s' $((table_width - 17 - ${#MODELS_DIR})) "")${BOLD_WHITE}${NC}"
+    echo -e "${BOLD_WHITE}╠════════════════════════════════════════════════════════════════════════════════════╣${NC}"
+    echo -e "${BOLD_WHITE}║ ${BOLD_PURPLE}#${NC}$(printf '%*s' $num_width "")${BOLD_YELLOW}Model Name${NC}$(printf '%*s' $((name_width - 10)) "") ${BOLD_GREEN}Size${NC}$(printf '%*s' $((size_width - 4)) "") ${BOLD_BLUE}Type${NC}$(printf '%*s' $((type_width - 4)) "") ${BOLD_CYAN}Status${NC}$(printf '%*s' $((status_width - 6)) "")${BOLD_WHITE}${NC}"
+    echo -e "${BOLD_WHITE}╠════════════════════════════════════════════════════════════════════════════════════╣${NC}"
+    
+    # Find all model files in the directory and subdirectories (only certain extensions)
+    local model_files=($(find "$MODELS_DIR" -type f \( -name "*.safetensors" -o -name "*.pth" -o -name "*.ckpt" -o -name "*.bin" \) | sort))
+    
+    if [ ${#model_files[@]} -eq 0 ]; then
+        echo -e "${BOLD_WHITE}║ ${YELLOW}No model files found${NC}$(printf '%*s' $((table_width - 20)) "")${BOLD_WHITE}${NC}"
+    else
+        # Loop through each model file
+        for ((i=0; i<${#model_files[@]}; i++)); do
+            local file="${model_files[$i]}"
+            local filename=$(basename "$file")
+            local rel_path=${file#"$MODELS_DIR/"}
+            
+            # Get file size
+            local size=$(du -h "$file" | cut -f1)
+            local size_bytes=$(du -b "$file" | cut -f1)
+            total_size=$((total_size + size_bytes))
+            
+            # Determine model type
+            local model_type=""
+            if [[ "$filename" == *"sdxl"* ]]; then
+                model_type="SDXL"
+            elif [[ "$filename" == *"sd15"* || "$filename" == *"v1-5"* ]]; then
+                model_type="SD 1.5"
+            elif [[ "$filename" == *"control"* ]]; then
+                model_type="ControlNet"
+            elif [[ "$filename" == *"lora"* ]]; then
+                model_type="LoRA"
+            elif [[ "$filename" == *"clip"* ]]; then
+                model_type="CLIP"
+            else
+                model_type="Standard"
+            fi
+            
+            # Check if the file is complete (simple check)
+            local status="OK"
+            local status_color="${BOLD_GREEN}"
+            if [[ "$filename" == *.part || "$size_bytes" -lt 10000 ]]; then
+                status="Incomplete"
+                status_color="${BOLD_RED}"
+            fi
+            
+            # Trim filename if too long
+            if [ ${#filename} -gt $((name_width - 3)) ]; then
+                filename="${filename:0:$((name_width - 6))}..."
+            fi
+            
+            # Print the model information in table format with proper alignment
+            echo -e "${BOLD_WHITE}║${NC} ${BOLD_PURPLE}$(($i+1))${NC}$(printf '%*s' $((num_width - ${#i})) "") ${BOLD_YELLOW}${filename}${NC}$(printf '%*s' $((name_width - ${#filename})) "") ${BOLD_GREEN}${size}${NC}$(printf '%*s' $((size_width - ${#size})) "") ${BOLD_BLUE}${model_type}${NC}$(printf '%*s' $((type_width - ${#model_type})) "") ${status_color}${status}${NC}$(printf '%*s' $((status_width - ${#status})) "")${BOLD_WHITE}${NC}"
+            
+            model_count=$((model_count + 1))
+        done
+    fi
+    
+    # Format total size for human readability
+    local total_size_human=""
+    if [ $total_size -ge 1073741824 ]; then # 1 GB or more
+        total_size_human=$(echo "scale=2; $total_size/1073741824" | bc)" GB"
+    elif [ $total_size -ge 1048576 ]; then # 1 MB or more
+        total_size_human=$(echo "scale=2; $total_size/1048576" | bc)" MB"
+    elif [ $total_size -ge 1024 ]; then # 1 KB or more
+        total_size_human=$(echo "scale=2; $total_size/1024" | bc)" KB"
+    else
+        total_size_human="$total_size bytes"
+    fi
+    
+    # Footer for the table
+    echo -e "${BOLD_WHITE}╠════════════════════════════════════════════════════════════════════════════════════╣${NC}"
+    echo -e "${BOLD_WHITE}║ ${BOLD_GREEN}Total:${NC} ${model_count} models, ${BOLD_CYAN}Total size:${NC} ${total_size_human}$(printf '%*s' $((table_width - 22 - ${#model_count} - ${#total_size_human})) "")${BOLD_WHITE}${NC}"
+    echo -e "${BOLD_WHITE}╚════════════════════════════════════════════════════════════════════════════════════╝${NC}"
+    
+    echo
+    read -p "Press Enter to continue..."
+}
+
+# Function to delete a model
+delete_model() {
+    clear
+    print_color "BOLD_CYAN" "DELETE MODELS" "header"
+    
+    # Check if models directory exists
+    if [ ! -d "$MODELS_DIR" ]; then
+        print_color "RED" "Models directory not found at: $MODELS_DIR" "error"
+        read -p "Press Enter to continue..."
+        return 1
+    fi
+    
+    # Find all model files in the directory and subdirectories
+    local model_files=($(find "$MODELS_DIR" -type f \( -name "*.safetensors" -o -name "*.pth" -o -name "*.ckpt" -o -name "*.bin" \) | sort))
+    
+    if [ ${#model_files[@]} -eq 0 ]; then
+        print_color "YELLOW" "No model files found in: $MODELS_DIR" "warning"
+        read -p "Press Enter to continue..."
+        return 1
+    fi
+    
+    # Display model list for selection
+    echo -e "${BOLD_WHITE}Available models to delete:${NC}"
+    echo
+    
+    for ((i=0; i<${#model_files[@]}; i++)); do
+        local file="${model_files[$i]}"
+        local filename=$(basename "$file")
+        local rel_path=${file#"$MODELS_DIR/"}
+        local size=$(du -h "$file" | cut -f1)
+        
+        echo -e "${BOLD_PURPLE}$(($i+1))${NC}. ${BOLD_YELLOW}${rel_path}${NC} (${BOLD_GREEN}${size}${NC})"
+    done
+    
+    echo
+    echo -e "${BOLD_WHITE}Enter the number of the model to delete, or${NC}"
+    echo -e "${BOLD_WHITE}Enter 'all' to delete all models, or${NC}"
+    echo -e "${BOLD_WHITE}Enter 0 to cancel${NC}"
+    echo -ne "${YELLOW}Your choice: ${BOLD_PURPLE}"
+    read delete_choice
+    echo -ne "${NC}"
+    
+    if [[ "$delete_choice" == "0" ]]; then
+        print_color "YELLOW" "Operation cancelled." "warning"
+        read -p "Press Enter to continue..."
+        return 0
+    elif [[ "$delete_choice" == "all" ]]; then
+        echo
+        print_color "RED" "⚠️  WARNING: You are about to delete ALL model files!" "error"
+        print_color "RED" "This action cannot be undone." "error"
+        echo
+        read -p "$(echo -e ${BOLD_RED}Are you ABSOLUTELY SURE you want to delete ALL models? \(yes/no\)${NC} )" confirm
+        
+        if [[ "$confirm" == "yes" ]]; then
+            echo
+            print_color "YELLOW" "Deleting all model files..." "warning"
+            local success_count=0
+            local fail_count=0
+            
+            for file in "${model_files[@]}"; do
+                echo -ne "${YELLOW}Deleting: ${CYAN}$(basename "$file")${NC}... "
+                
+                if rm "$file"; then
+                    echo -e "${BOLD_GREEN}✓${NC}"
+                    success_count=$((success_count + 1))
+                else
+                    echo -e "${BOLD_RED}✗${NC}"
+                    fail_count=$((fail_count + 1))
+                fi
+            done
+            
+            echo
+            print_color "BOLD_GREEN" "Deletion complete: $success_count files deleted successfully, $fail_count failed" "success"
+            read -p "Press Enter to continue..."
+        else
+            print_color "YELLOW" "Operation cancelled." "warning"
+            read -p "Press Enter to continue..."
+        fi
+    else
+        # Convert to integer and check if valid
+        delete_choice=$(echo "$delete_choice" | tr -d ' ')
+        
+        if ! [[ "$delete_choice" =~ ^[0-9]+$ ]]; then
+            print_color "RED" "Invalid choice. Please enter a number." "error"
+            read -p "Press Enter to continue..."
+            return 1
+        fi
+        
+        delete_index=$((delete_choice - 1))
+        
+        if [ $delete_index -lt 0 ] || [ $delete_index -ge ${#model_files[@]} ]; then
+            print_color "RED" "Invalid selection. Please choose a number between 1 and ${#model_files[@]}" "error"
+            read -p "Press Enter to continue..."
+            return 1
+        fi
+        
+        local selected_file="${model_files[$delete_index]}"
+        local selected_filename=$(basename "$selected_file")
+        
+        echo
+        print_color "YELLOW" "You selected: $selected_filename" "warning"
+        local file_size=$(du -h "$selected_file" | cut -f1)
+        echo -e "${BOLD_WHITE}Path: ${CYAN}$selected_file${NC}"
+        echo -e "${BOLD_WHITE}Size: ${CYAN}$file_size${NC}"
+        echo
+        
+        read -p "$(echo -e ${BOLD_YELLOW}Are you sure you want to delete this model? \(y/n\)${NC} )" -n 1 -r
+        echo
+        
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            echo
+            print_color "YELLOW" "Deleting model: $selected_filename" "warning"
+            
+            if rm "$selected_file"; then
+                print_color "BOLD_GREEN" "✓ Model deleted successfully" "success"
+            else
+                print_color "BOLD_RED" "✗ Failed to delete model" "error"
+            fi
+            
+            read -p "Press Enter to continue..."
+        else
+            print_color "YELLOW" "Operation cancelled." "warning"
+            read -p "Press Enter to continue..."
+        fi
+    fi
+}
+
+# Function to check model integrity
+check_model_integrity() {
+    clear
+    print_color "BOLD_CYAN" "CHECK MODEL INTEGRITY" "header"
+    
+    # Check if models directory exists
+    if [ ! -d "$MODELS_DIR" ]; then
+        print_color "RED" "Models directory not found at: $MODELS_DIR" "error"
+        read -p "Press Enter to continue..."
+        return 1
+    fi
+    
+    # Find all model files in the directory and subdirectories
+    local model_files=($(find "$MODELS_DIR" -type f \( -name "*.safetensors" -o -name "*.pth" -o -name "*.ckpt" -o -name "*.bin" \) | sort))
+    
+    if [ ${#model_files[@]} -eq 0 ]; then
+        print_color "YELLOW" "No model files found in: $MODELS_DIR" "warning"
+        read -p "Press Enter to continue..."
+        return 1
+    fi
+    
+    # Ask user whether to check all models or select one
+    echo -e "${BOLD_WHITE}Options:${NC}"
+    echo -e "${BOLD_PURPLE}1${NC}. ${BOLD_YELLOW}Check all models${NC} (slower but thorough)"
+    echo -e "${BOLD_PURPLE}2${NC}. ${BOLD_YELLOW}Select a specific model${NC} to check"
+    echo -e "${BOLD_PURPLE}0${NC}. ${BOLD_YELLOW}Cancel${NC} and return to previous menu"
+    echo
+    
+    echo -ne "${YELLOW}Your choice: ${BOLD_PURPLE}"
+    read integrity_choice
+    echo -ne "${NC}"
+    
+    case $integrity_choice in
+        0)
+            print_color "YELLOW" "Operation cancelled." "warning"
+            read -p "Press Enter to continue..."
+            return 0
+            ;;
+        1)
+            echo
+            print_color "YELLOW" "Checking all models (this may take some time)..." "info"
+            local issues_found=0
+            local checked_count=0
+            
+            # Create a table header for results
+            echo -e "${BOLD_WHITE}╔════════════════════════════════════════════════════════════════════════╗${NC}"
+            echo -e "${BOLD_WHITE}║ ${BOLD_CYAN}Model Integrity Check Results${BOLD_WHITE}                  ${NC}"
+            echo -e "${BOLD_WHITE}╠════════════════════════════════════════════════════════════════════════╣${NC}"
+            echo -e "${BOLD_WHITE}║ ${BOLD_YELLOW}Model Name                     ${BOLD_GREEN}Size       ${BOLD_BLUE}Status        ${BOLD_WHITE}${NC}"
+            echo -e "${BOLD_WHITE}╠════════════════════════════════════════════════════════════════════════╣${NC}"
+            
+            for file in "${model_files[@]}"; do
+                local filename=$(basename "$file")
+                local file_size=$(du -h "$file" | cut -f1)
+                local size_bytes=$(du -b "$file" | cut -f1)
+                
+                # Trim filename if too long
+                if [ ${#filename} -gt 28 ]; then
+                    display_name="${filename:0:25}..."
+                else
+                    display_name="$filename"
+                fi
+                
+                echo -ne "${BOLD_WHITE}║ ${BOLD_YELLOW}${display_name}${NC}$(printf '%*s' $((30 - ${#display_name})) "") ${BOLD_GREEN}${file_size}${NC}$(printf '%*s' $((12 - ${#file_size})) "") ${BOLD_BLUE}Checking...${NC}$(printf '%*s' $((8)) "") ${BOLD_WHITE}${NC}\r"
+                
+                # Basic integrity check
+                local integrity_status="OK"
+                local status_color="${BOLD_GREEN}"
+                
+                # Check for zero or very small file size
+                if [ $size_bytes -lt 1000 ]; then
+                    integrity_status="Empty"
+                    status_color="${BOLD_RED}"
+                    issues_found=$((issues_found + 1))
+                fi
+                
+                # Check for incomplete downloads (.part files)
+                if [[ "$filename" == *.part ]]; then
+                    integrity_status="Incomplete"
+                    status_color="${BOLD_RED}"
+                    issues_found=$((issues_found + 1))
+                fi
+                
+                # Check file is readable
+                if ! cat "$file" &> /dev/null; then
+                    integrity_status="Unreadable"
+                    status_color="${BOLD_RED}"
+                    issues_found=$((issues_found + 1))
+                fi
+                
+                # Display result for this file
+                echo -e "${BOLD_WHITE}║ ${BOLD_YELLOW}${display_name}${NC}$(printf '%*s' $((30 - ${#display_name})) "") ${BOLD_GREEN}${file_size}${NC}$(printf '%*s' $((12 - ${#file_size})) "") ${status_color}${integrity_status}${NC}$(printf '%*s' $((15 - ${#integrity_status})) "") ${BOLD_WHITE}║${NC}"
+                
+                checked_count=$((checked_count + 1))
+            done
+            
+            # Display summary
+            echo -e "${BOLD_WHITE}╠════════════════════════════════════════════════════════════════════════╣${NC}"
+            if [ $issues_found -eq 0 ]; then
+                echo -e "${BOLD_WHITE}║ ${BOLD_GREEN}All models passed integrity check ($checked_count files checked)${NC}$(printf '%*s' $((23 - ${#checked_count})) "") ${BOLD_WHITE}${NC}"
+            else
+                echo -e "${BOLD_WHITE}║ ${BOLD_RED}Issues found in $issues_found files${NC} (out of $checked_count checked)$(printf '%*s' $((28 - ${#issues_found} - ${#checked_count})) "") ${BOLD_WHITE}${NC}"
+            fi
+            echo -e "${BOLD_WHITE}╚════════════════════════════════════════════════════════════════════════╝${NC}"
+            
+            echo
+            read -p "Press Enter to continue..."
+            ;;
+        2)
+            # Display a list of models for the user to select
+            echo
+            echo -e "${BOLD_WHITE}Select a model to check:${NC}"
+            echo
+            
+            for ((i=0; i<${#model_files[@]}; i++)); do
+                local file="${model_files[$i]}"
+                local filename=$(basename "$file")
+                local rel_path=${file#"$MODELS_DIR/"}
+                local size=$(du -h "$file" | cut -f1)
+                
+                echo -e "${BOLD_PURPLE}$(($i+1))${NC}. ${BOLD_YELLOW}${rel_path}${NC} (${BOLD_GREEN}${size}${NC})"
+            done
+            
+            echo
+            echo -ne "${YELLOW}Enter the number of the model to check: ${BOLD_PURPLE}"
+            read model_number
+            echo -ne "${NC}"
+            
+            # Validate input
+            if ! [[ "$model_number" =~ ^[0-9]+$ ]]; then
+                print_color "RED" "Invalid choice. Please enter a number." "error"
+                read -p "Press Enter to continue..."
+                return 1
+            fi
+            
+            model_index=$((model_number - 1))
+            
+            if [ $model_index -lt 0 ] || [ $model_index -ge ${#model_files[@]} ]; then
+                print_color "RED" "Invalid selection. Please choose a number between 1 and ${#model_files[@]}" "error"
+                read -p "Press Enter to continue..."
+                return 1
+            fi
+            
+            local selected_file="${model_files[$model_index]}"
+            local selected_filename=$(basename "$selected_file")
+            local file_size=$(du -h "$selected_file" | cut -f1)
+            local size_bytes=$(du -b "$selected_file" | cut -f1)
+            
+            echo
+            print_color "YELLOW" "Checking model: $selected_filename" "info"
+            echo -e "${BOLD_WHITE}Path: ${CYAN}$selected_file${NC}"
+            echo -e "${BOLD_WHITE}Size: ${CYAN}$file_size${NC}"
+            echo
+            
+            # Perform more detailed integrity check on the single selected file
+            print_color "BLUE" "Running integrity checks..." "info"
+            echo
+            
+            # Start a spinner animation
+            echo -ne "${BOLD_CYAN}Checking file integrity...${NC} "
+            
+            # Check is readable
+            if ! cat "$selected_file" &> /dev/null; then
+                echo -e "${BOLD_RED}✗ File not readable${NC}"
+                local integrity_issue=true
+            else
+                echo -e "${BOLD_GREEN}✓ File is readable${NC}"
+            fi
+            
+            # Check for zero or very small file size
+            echo -ne "${BOLD_CYAN}Checking file size...${NC} "
+            if [ $size_bytes -lt 1000 ]; then
+                echo -e "${BOLD_RED}✗ File is too small ($size_bytes bytes)${NC}"
+                local integrity_issue=true
+            else
+                echo -e "${BOLD_GREEN}✓ File size appears normal${NC}"
+            fi
+            
+            # Check file format based on extension
+            echo -ne "${BOLD_CYAN}Validating file format...${NC} "
+            if [[ "$selected_filename" == *.safetensors ]]; then
+                # Better check for safetensors format - looking for JSON header
+                # SafeTensors files start with a JSON header which will contain certain patterns
+                if hexdump -n 128 "$selected_file" | grep -q "metadata" || \
+                   file "$selected_file" | grep -q "data" || \
+                   head -c 256 "$selected_file" 2>/dev/null | grep -q -E "tensor|dtype|shape"; then
+                    echo -e "${BOLD_GREEN}✓ File format appears valid${NC}"
+                else
+                    echo -e "${BOLD_RED}✗ File format may be invalid${NC}"
+                    local integrity_issue=true
+                fi
+            elif [[ "$selected_filename" == *.pth || "$selected_filename" == *.ckpt ]]; then
+                # Basic check for PyTorch files
+                if file "$selected_file" | grep -q -i "data"; then
+                    echo -e "${BOLD_GREEN}✓ File format appears valid${NC}"
+                else
+                    echo -e "${BOLD_RED}✗ File format may be invalid${NC}"
+                    local integrity_issue=true
+                fi
+            else
+                echo -e "${BOLD_YELLOW}⚠ Unable to verify format for this file type${NC}"
+            fi
+            
+            # Check file permissions
+            echo -ne "${BOLD_CYAN}Checking permissions...${NC} "
+            if [ -r "$selected_file" ]; then
+                echo -e "${BOLD_GREEN}✓ File is readable${NC}"
+            else
+                echo -e "${BOLD_RED}✗ File is not readable${NC}"
+                local integrity_issue=true
+            fi
+            
+            echo
+            
+            # Display final result
+            if [ "$integrity_issue" = true ]; then
+                echo -e "${BOLD_RED}╔════════════════════════════════════════════════════════════════════╗${NC}"
+                echo -e "${BOLD_RED}║ ⚠️  Issues detected with this model file!                           ║${NC}"
+                echo -e "${BOLD_RED}╚════════════════════════════════════════════════════════════════════╝${NC}"
+                echo
+                print_color "YELLOW" "Recommendations:" "warning"
+                echo -e "${BOLD_WHITE}• Try re-downloading the model${NC}"
+                echo -e "${BOLD_WHITE}• Check disk for errors${NC}"
+                echo -e "${BOLD_WHITE}• Ensure you have sufficient permissions${NC}"
+            else
+                echo -e "${BOLD_GREEN}╔════════════════════════════════════════════════════════════════════╗${NC}"
+                echo -e "${BOLD_GREEN}║ ✅ Model appears to be valid and intact!                           ║${NC}"
+                echo -e "${BOLD_GREEN}╚════════════════════════════════════════════════════════════════════╝${NC}"
+            fi
+            
+            echo
+            read -p "Press Enter to continue..."
+            ;;
+        *)
+            print_color "RED" "Invalid choice. Please try again." "error"
+            read -p "Press Enter to continue..."
+            return 1
+            ;;
+    esac
+}
+
+# Function to view detailed model information
+view_model_details() {
+    clear
+    echo -e "${BOLD_PURPLE}══════════════════════════ MODEL DETAILS ══════════════════════════════${NC}"
+    
+    # Check if models directory exists
+    if [ ! -d "$MODELS_DIR" ]; then
+        print_color "RED" "Models directory not found at: $MODELS_DIR" "error"
+        read -p "Press Enter to continue..."
+        return 1
+    fi
+    
+    # Find all model files in the directory and subdirectories
+    local model_files=($(find "$MODELS_DIR" -type f \( -name "*.safetensors" -o -name "*.pth" -o -name "*.ckpt" -o -name "*.bin" \) | sort))
+    
+    if [ ${#model_files[@]} -eq 0 ]; then
+        print_color "YELLOW" "No model files found in: $MODELS_DIR" "warning"
+        read -p "Press Enter to continue..."
+        return 1
+    fi
+    
+    # Display a list of models for the user to select
+    echo -e "${BOLD_WHITE}Select a model to view detailed information:${NC}"
+    echo
+    
+    for ((i=0; i<${#model_files[@]}; i++)); do
+        local file="${model_files[$i]}"
+        local filename=$(basename "$file")
+        local rel_path=${file#"$MODELS_DIR/"}
+        local size=$(du -h "$file" | cut -f1)
+        
+        echo -e "${BOLD_PURPLE}$(($i+1))${NC}. ${BOLD_YELLOW}${rel_path}${NC} (${BOLD_GREEN}${size}${NC})"
+    done
+    
+    echo
+    echo -ne "${YELLOW}Enter the number of the model: ${BOLD_PURPLE}"
+    read model_number
+    echo -ne "${NC}"
+    
+    # Validate input
+    if ! [[ "$model_number" =~ ^[0-9]+$ ]]; then
+        print_color "RED" "Invalid choice. Please enter a number." "error"
+        read -p "Press Enter to continue..."
+        return 1
+    fi
+    
+    model_index=$((model_number - 1))
+    
+    if [ $model_index -lt 0 ] || [ $model_index -ge ${#model_files[@]} ]; then
+        print_color "RED" "Invalid selection. Please choose a number between 1 and ${#model_files[@]}" "error"
+        read -p "Press Enter to continue..."
+        return 1
+    fi
+    
+    local selected_file="${model_files[$model_index]}"
+    
+    clear
+    echo -e "${BOLD_PURPLE}══════════════════════════ MODEL DETAILS ════════════════════════════${NC}"
+    
+    # Gather detailed information about the model
+    local filename=$(basename "$selected_file")
+    local filepath=$(dirname "$selected_file")
+    local rel_path=${selected_file#"$MODELS_DIR/"}
+    local size_human=$(du -h "$selected_file" | cut -f1)
+    local size_bytes=$(du -b "$selected_file" | cut -f1)
+    local last_modified=$(date -r "$selected_file" "+%Y-%m-%d %H:%M:%S")
+    local file_type=$(file -b "$selected_file" | head -c 50)
+    local permissions=$(ls -l "$selected_file" | awk '{print $1}')
+    local owner=$(ls -l "$selected_file" | awk '{print $3}')
+    
+    # Get file extension safely
+    local file_ext="${filename##*.}"
+    # Safely handle filename with no extension
+    if [ "$file_ext" = "$filename" ]; then
+        file_ext="none"
+    fi
+    
+    # Determine model type
+    local model_type=""
+    if [[ "$filename" == *"sdxl"* ]]; then
+        model_type="Stable Diffusion XL"
+    elif [[ "$filename" == *"sd15"* || "$filename" == *"v1-5"* ]]; then
+        model_type="Stable Diffusion 1.5"
+    elif [[ "$filename" == *"control"* ]]; then
+        model_type="ControlNet"
+    elif [[ "$filename" == *"lora"* ]]; then
+        model_type="LoRA"
+    elif [[ "$filename" == *"clip"* ]]; then
+        model_type="CLIP"
+    elif [[ "$filename" == *"inpaint"* ]]; then
+        model_type="Inpainting"
+    elif [[ "$filename" == *"vae"* ]]; then
+        model_type="VAE"
+    else
+        model_type="Standard Diffusion Model"
+    fi
+    
+    # Display model information in a clean, fixed format
+    echo -e "${BOLD_WHITE}╔═════════════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BOLD_WHITE}║ ${BOLD_YELLOW}MODEL INFORMATION${NC}                                 ${NC}"
+    echo -e "${BOLD_WHITE}╠═════════════════════════════════════════════════════════════════════╣${NC}"
+    
+    echo -e "${BOLD_WHITE}║ ${BOLD_PURPLE}Model Name:${NC}      ${BOLD_CYAN}$filename"
+    echo -e "${BOLD_WHITE}║ ${BOLD_PURPLE}Model Type:${NC}      ${BOLD_CYAN}$model_type"
+    echo -e "${BOLD_WHITE}║ ${BOLD_PURPLE}File Format:${NC}     ${BOLD_CYAN}$file_ext${NC}"
+    echo -e "${BOLD_WHITE}║ ${BOLD_PURPLE}Location:${NC}        ${BOLD_CYAN}$filepath"
+    echo -e "${BOLD_WHITE}║ ${BOLD_PURPLE}Relative Path:${NC}   ${BOLD_CYAN}$rel_path"
+    echo -e "${BOLD_WHITE}║ ${BOLD_PURPLE}Size:${NC}            ${BOLD_CYAN}$size_human ($size_bytes bytes)"
+    echo -e "${BOLD_WHITE}║ ${BOLD_PURPLE}Permissions:${NC}     ${BOLD_CYAN}$permissions${NC}"
+    echo -e "${BOLD_WHITE}║ ${BOLD_PURPLE}Owner:${NC}           ${BOLD_CYAN}$owner"
+    echo -e "${BOLD_WHITE}║ ${BOLD_PURPLE}File Type:${NC}       ${BOLD_CYAN}$file_type${NC}"
+    
+    echo -e "${BOLD_WHITE}╠═════════════════════════════════════════════════════════════════════╣${NC}"
+    echo -e "${BOLD_WHITE}║ ${BOLD_YELLOW}USAGE INFORMATION${NC}                                 ${NC}"
+    echo -e "${BOLD_WHITE}╠═════════════════════════════════════════════════════════════════════╣${NC}"
+    
+    # Display usage examples based on model type
+    case $model_type in
+        "Stable Diffusion XL")
+            echo -e "${BOLD_WHITE}║ ${BOLD_GREEN}Example usage:${NC}${NC}"
+            echo -e "${BOLD_WHITE}║ ${BOLD_CYAN}./diffugen.sh \"your prompt\" --model sdxl --steps 30${NC}${NC}"
+            echo -e "${BOLD_WHITE}║                                                               ${NC}"
+            echo -e "${BOLD_WHITE}║ ${BOLD_GREEN}Recommended settings:${NC}                       ${NC}"
+            echo -e "${BOLD_WHITE}║ ${BOLD_CYAN}--cfg-scale 7.5 --steps 30-50 --width 1024 --height 1024${NC}${NC}"
+            ;;
+        "Stable Diffusion 1.5")
+            echo -e "${BOLD_WHITE}║ ${BOLD_GREEN}Example usage:${NC}${NC}"
+            echo -e "${BOLD_WHITE}║ ${BOLD_CYAN}./diffugen.sh \"your prompt\" --model sd15 --steps 25${NC}${NC}"
+            echo -e "${BOLD_WHITE}║                                                                ${NC}"
+            echo -e "${BOLD_WHITE}║ ${BOLD_GREEN}Recommended settings:${NC}${NC}"
+            echo -e "${BOLD_WHITE}║ ${BOLD_CYAN}--cfg-scale 7.0 --steps 20-30 --width 512 --height 512${NC}${NC}"
+            ;;
+        "ControlNet")
+            echo -e "${BOLD_WHITE}║ ${BOLD_GREEN}Example usage:${NC}${NC}"
+            echo -e "${BOLD_WHITE}║ ${BOLD_CYAN}./diffugen.sh \"your prompt\" --controlnet \"image.png\"${NC}${NC}"
+            echo -e "${BOLD_WHITE}║                                                                 ${NC}"
+            echo -e "${BOLD_WHITE}║ ${BOLD_GREEN}Recommended settings:${NC}                         ${NC}"
+            echo -e "${BOLD_WHITE}║ ${BOLD_CYAN}--controlnet-scale 0.8 --controlnet-type canny${NC} ${NC}"
+            ;;
+        "CLIP")
+            echo -e "${BOLD_WHITE}║ ${BOLD_GREEN}Example usage:${NC}${NC}"
+            echo -e "${BOLD_WHITE}║ ${BOLD_CYAN}./diffugen.sh \"your prompt\" --clip-model \"$rel_path\"${NC}${NC}"
+            echo -e "${BOLD_WHITE}║                                                                  ${NC}"
+            echo -e "${BOLD_WHITE}║ ${BOLD_GREEN}Recommended settings:${NC}                          ${NC}"
+            echo -e "${BOLD_WHITE}║ ${BOLD_CYAN}Used internally by models for text encoding${NC}     ${NC}"
+            ;;
+        *)
+            echo -e "${BOLD_WHITE}║ ${BOLD_GREEN}Example usage:${NC}                                 ${NC}"
+            echo -e "${BOLD_WHITE}║ ${BOLD_CYAN}./diffugen.sh \"your prompt\" --model custom --model-path \"$rel_path\"${NC}${NC}"
+            echo -e "${BOLD_WHITE}║                                                                  ${NC}"
+            echo -e "${BOLD_WHITE}║ ${BOLD_GREEN}Recommended settings:${NC}                          ${NC}"
+            echo -e "${BOLD_WHITE}║ ${BOLD_CYAN}Consult documentation for specific usage recommendations${NC}${NC}"
+            ;;
+    esac
+    
+    echo -e "${BOLD_WHITE}╚═════════════════════════════════════════════════════════════════════╝${NC}"
+    
+    echo
+    read -p "Press Enter to continue..."
 }
 
 # Function to show completion guide
