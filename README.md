@@ -1,4 +1,4 @@
-# DiffuGen - Advanced Stable Diffusion Image Generator with MCP Tool
+# DiffuGen - Advanced Stable Diffusion Image Generator with MCP Tool Capabilities
 
 <p align="center">
   <img src="diffugen.png" alt="DiffuGen Logo" width="200"/>
