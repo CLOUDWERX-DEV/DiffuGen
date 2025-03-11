@@ -751,6 +751,12 @@ cleanup() {
             echo -e "${BOLD_WHITE}• Make sure you have write access to the install directory"
             echo -e "${BOLD_WHITE}• Check if any files are locked by other processes"
             ;;
+        "repository")
+            print_color "YELLOW" "The error appears to be related to updating/cloning stable-diffusion.cpp:" "warning"
+            echo -e "${BOLD_WHITE}• Ensure the repository directory ownership is correct"
+            echo -e "${BOLD_WHITE}• Run the suggested git config command to add the safe directory exception"
+            echo -e "${BOLD_WHITE}• Verify that you have write permissions on the directory"
+            ;;
         *)
             print_color "YELLOW" "To resolve the issue:" "warning"
             echo -e "${BOLD_WHITE}• Review the error message above for specific details"
@@ -846,6 +852,9 @@ run_with_error_handling() {
                 "configuration")
                     error_type="permissions"
                     ;;
+                "repository")
+                    error_type="repository"
+                    ;;
                 *)
                     error_type="unknown"
                     ;;
@@ -871,8 +880,19 @@ setup_stable_diffusion_cpp() {
         if [[ $REPLY =~ ^[Yy]$ ]]; then
             print_color "BLUE" "Updating stable-diffusion.cpp repository..." "info"
             (cd stable-diffusion.cpp && git pull origin master && git submodule init && git submodule update) &
-            spinner $!
-            print_color "BOLD_GREEN" "Repository updated successfully!" "success"
+            pid=$!
+            spinner $pid
+            wait $pid
+            ret=$?
+            if [ $ret -ne 0 ]; then
+                print_color "RED" "Failed to update repository. Detected dubious ownership?" "error"
+                print_color "YELLOW" "To add an exception for this directory, run:" "warning"
+                safe_dir=$(realpath stable-diffusion.cpp)
+                echo -e "${BOLD_CYAN}git config --global --add safe.directory ${safe_dir}${NC}"
+                return 1
+            else
+                print_color "BOLD_GREEN" "Repository updated successfully!" "success"
+            fi
         else
             print_color "YELLOW" "Skipping update as requested." "info"
         fi
@@ -1818,15 +1838,12 @@ display_tui_menu() {
         2)
             # Check dependencies before proceeding with build
             run_with_error_handling "Checking build dependencies" "dependencies" check_dependencies "build"
-            run_with_error_handling "Setting up stable-diffusion.cpp" "build" setup_stable_diffusion_cpp
-            run_with_error_handling "Building stable-diffusion.cpp" "build" build_stable_diffusion_cpp
+            run_with_error_handling "Setting up stable-diffusion.cpp" "repository" setup_stable_diffusion_cpp
             read -p "Press Enter to continue..."  # Add this back
             display_tui_menu
             ;;
         3)
-            # Check Python version and setup venv
-            run_with_error_handling "Checking Python version" "python" verify_python_version
-            run_with_error_handling "Setting up Python virtual environment" "python" setup_venv
+            run_with_error_handling "Building stable-diffusion.cpp" "build" build_stable_diffusion_cpp
             read -p "Press Enter to continue..."  # Add this back
             display_tui_menu
             ;;
