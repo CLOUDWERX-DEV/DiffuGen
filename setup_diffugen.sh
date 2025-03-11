@@ -45,23 +45,6 @@ initialize_paths() {
     return 0
 }
 
-# Define ANSI art with heredoc for safe inclusion
-read -r -d '' ANSI_LOGO << 'ENDOFANSI'
-\e[49m \e[38;5;232;49m▄\e[38;5;233;49m▄\e[38;5;233;48;5;232m▄\e[38;5;233;48;5;233m▄\e[48;5;233m \e[38;5;233;48;5;233m▄▄▄▄▄▄▄▄▄\e[48;5;233m  \e[38;5;233;48;5;233m▄▄▄▄▄\e[38;5;233;49m▄▄\e[49m \e[m
-\e[38;5;233;49m▄\e[38;5;233;48;5;233m▄▄\e[38;5;203;48;5;233m▄\e[38;5;203;48;5;167m▄\e[38;5;203;48;5;203m▄\e[38;5;209;48;5;209m▄▄▄▄\e[38;5;215;48;5;209m▄\e[38;5;215;48;5;215m▄▄\e[38;5;216;48;5;216m▄▄\e[38;5;216;48;5;222m▄\e[38;5;215;48;5;222m▄\e[38;5;215;48;5;215m▄▄▄▄\e[38;5;221;48;5;233m▄\e[38;5;233;48;5;233m▄\e[38;5;233;49m▄\e[m
-\e[38;5;233;48;5;233m▄\e[38;5;234;48;5;234m▄\e[38;5;203;48;5;167m▄\e[38;5;203;48;5;203m▄▄▄\e[38;5;209;48;5;209m▄▄▄▄\e[38;5;215;48;5;215m▄▄\e[38;5;215;48;5;216m▄\e[38;5;215;48;5;215m▄▄▄▄▄▄▄▄▄\e[38;5;215;48;5;179m▄\e[38;5;234;48;5;233m▄\e[38;5;233;48;5;233m▄\e[m
-\e[38;5;233;48;5;233m▄\e[38;5;233;48;5;234m▄\e[38;5;203;48;5;203m▄▄▄▄\e[38;5;209;48;5;209m▄▄▄▄\e[38;5;131;48;5;215m▄\e[38;5;235;48;5;209m▄\e[38;5;234;48;5;137m▄\e[38;5;235;48;5;215m▄\e[38;5;137;48;5;215m▄\e[38;5;215;48;5;215m▄▄▄▄▄▄▄▄\e[48;5;234m \e[48;5;233m \e[m
-\e[48;5;233m  \e[38;5;203;48;5;203m▄▄▄▄\e[38;5;203;48;5;209m▄\e[38;5;237;48;5;209m▄\e[38;5;235;48;5;131m▄\e[38;5;234;48;5;236m▄\e[38;5;233;48;5;234m▄\e[38;5;0;48;5;234m▄\e[49;38;5;233m▀\e[38;5;0;48;5;234m▄\e[38;5;233;48;5;234m▄\e[38;5;234;48;5;238m▄\e[38;5;235;48;5;137m▄\e[38;5;94;48;5;215m▄\e[38;5;215;48;5;215m▄▄▄▄▄\e[38;5;233;48;5;234m▄\e[38;5;233;48;5;233m▄\e[m
-\e[48;5;233m \e[38;5;233;48;5;233m▄\e[38;5;167;48;5;203m▄▄\e[38;5;168;48;5;203m▄\e[38;5;168;48;5;167m▄\e[38;5;168;48;5;168m▄\e[38;5;235;48;5;235m▄\e[48;5;233m \e[49;38;5;0m▀\e[38;5;233;49m▄\e[38;5;237;48;5;232m▄\e[38;5;24;48;5;232m▄\e[38;5;23;48;5;232m▄\e[38;5;233;49m▄\e[49;38;5;233m▀\e[48;5;234m \e[38;5;236;48;5;236m▄\e[38;5;215;48;5;215m▄▄▄▄▄\e[48;5;233m \e[38;5;233;48;5;233m▄\e[m
-\e[48;5;233m  \e[38;5;161;48;5;161m▄\e[38;5;162;48;5;168m▄\e[38;5;168;48;5;168m▄▄▄\e[38;5;235;48;5;235m▄\e[48;5;233m \e[48;5;232m \e[38;5;237;48;5;237m▄\e[38;5;132;48;5;96m▄\e[38;5;96;48;5;61m▄\e[38;5;67;48;5;31m▄\e[38;5;236;48;5;236m▄\e[48;5;0m \e[48;5;234m \e[38;5;236;48;5;236m▄\e[38;5;215;48;5;215m▄▄▄\e[38;5;179;48;5;215m▄\e[38;5;144;48;5;215m▄\e[48;5;233m  \e[m
-\e[38;5;233;48;5;233m▄\e[48;5;233m \e[38;5;161;48;5;161m▄▄\e[38;5;161;48;5;168m▄\e[38;5;168;48;5;168m▄▄\e[38;5;235;48;5;235m▄\e[38;5;233;48;5;233m▄\e[38;5;232;49m▄\e[49;38;5;233m▀\e[38;5;233;48;5;89m▄\e[38;5;234;48;5;96m▄\e[38;5;233;48;5;238m▄\e[49;38;5;233m▀\e[38;5;232;49m▄\e[38;5;234;48;5;234m▄\e[38;5;236;48;5;236m▄\e[38;5;173;48;5;209m▄\e[38;5;102;48;5;215m▄\e[38;5;73;48;5;179m▄\e[38;5;38;48;5;73m▄\e[38;5;38;48;5;38m▄\e[38;5;233;48;5;233m▄▄\e[m
-\e[38;5;233;48;5;233m▄\e[48;5;233m \e[38;5;161;48;5;161m▄▄▄\e[38;5;167;48;5;167m▄\e[38;5;168;48;5;168m▄\e[38;5;168;48;5;89m▄\e[38;5;131;48;5;234m▄\e[38;5;236;48;5;234m▄\e[38;5;234;48;5;233m▄\e[38;5;233;49m▄\e[38;5;232;49m▄\e[38;5;233;49m▄\e[38;5;233;48;5;232m▄\e[38;5;235;48;5;233m▄\e[38;5;60;48;5;234m▄\e[38;5;67;48;5;239m▄\e[38;5;67;48;5;67m▄▄\e[38;5;67;48;5;37m▄\e[38;5;73;48;5;37m▄\e[38;5;37;48;5;37m▄\e[38;5;233;48;5;233m▄\e[48;5;233m \e[m
-\e[38;5;233;48;5;233m▄▄\e[38;5;161;48;5;161m▄▄▄▄\e[38;5;161;48;5;167m▄\e[38;5;167;48;5;168m▄\e[38;5;168;48;5;168m▄\e[38;5;132;48;5;132m▄\e[38;5;132;48;5;239m▄\e[38;5;96;48;5;235m▄\e[38;5;240;48;5;234m▄\e[38;5;60;48;5;235m▄\e[38;5;61;48;5;237m▄\e[38;5;61;48;5;61m▄▄\e[38;5;61;48;5;67m▄\e[38;5;67;48;5;67m▄▄▄▄\e[38;5;67;48;5;31m▄\e[38;5;233;48;5;233m▄▄\e[m
-\e[38;5;233;48;5;233m▄▄\e[38;5;233;48;5;125m▄\e[38;5;161;48;5;161m▄▄▄▄▄\e[38;5;162;48;5;168m▄\e[38;5;132;48;5;132m▄▄\e[38;5;96;48;5;96m▄\e[38;5;96;48;5;97m▄\e[38;5;97;48;5;61m▄\e[38;5;61;48;5;61m▄▄▄▄▄\e[38;5;61;48;5;67m▄▄▄\e[38;5;233;48;5;61m▄\e[38;5;233;48;5;233m▄▄\e[m
-\e[49m \e[38;5;232;48;5;233m▄\e[38;5;233;48;5;233m▄▄\e[38;5;233;48;5;161m▄▄▄▄▄\e[38;5;233;48;5;126m▄\e[38;5;233;48;5;132m▄\e[38;5;233;48;5;96m▄▄\e[38;5;233;48;5;60m▄\e[38;5;233;48;5;61m▄▄▄▄▄▄▄\e[38;5;233;48;5;233m▄▄\e[38;5;232;48;5;233m▄\e[49m \e[m
-\e[49m  \e[49;38;5;0m▀\e[49;38;5;233m▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀\e[49m  \e[m
-ENDOFANSI
-
 # Initialize global variables for operation tracking and error handling
 initialize_globals() {
     # Critical operation tracking
@@ -240,21 +223,6 @@ display_logo() {
     echo -e "                                           ${BOLD_PURPLE} {´◕ ◡ ◕｀}                                             "
     echo -e "                                    ${BOLD_PURPLE}[ DiffuGen Setup Utility ]                                     "
     echo -e "${NC}"
-    # Display the ANSI art logo centered
-    # Calculate terminal width for centering
-    TERM_WIDTH=$(tput cols)
-    # The ANSI art is approximately 80 columns wide
-    ANSI_WIDTH=25
-    # Calculate padding needed to center the ANSI art
-    PADDING=$(( (TERM_WIDTH - ANSI_WIDTH) / 4 ))
-
-    # Apply padding by adding spaces before each line of the ANSI art
-    if [ $PADDING -gt 0 ]; then
-        echo -e "$ANSI_LOGO" | sed "s/^/$(printf '%*s' $PADDING '')/g"
-    else
-        # If terminal is too narrow, just display without centering
-        echo -e "$ANSI_LOGO"
-    fi
     
  echo -e "${BOLD_PURPLE}"   
                echo  "              ______ ________________ _______          _______________       "
@@ -362,14 +330,24 @@ run_sudo_command() {
     print_color "YELLOW" "$msg" "info"
     print_color "CYAN" "Please enter your password when prompted" "info"
     
-    # Use -S to read password from stdin
+    # Use -S to read password from stdin and keep sudo timestamp updated
     echo -e "${BOLD_CYAN}[sudo] password for $USER: ${NC}"
-    sudo -S eval "$cmd" 2>/dev/null &
-    local pid=$!
+    # Use sudo with -v to explicitly validate and extend the sudo timeout
+    sudo -v
     
-    # Show spinner while command is running
-    spinner $pid
-    return $?
+    # If sudo validation was successful, run the command
+    if [ $? -eq 0 ]; then
+        # Now run the actual command with sudo
+        sudo eval "$cmd" 2>/dev/null &
+        local pid=$!
+        
+        # Show spinner while command is running
+        spinner $pid
+        return $?
+    else
+        print_color "RED" "Authentication failed" "error"
+        return 1
+    fi
 }
 
 # Function to detect OS with fancy output
@@ -427,13 +405,28 @@ install_dependencies() {
             echo "  • bc: Command line calculator"
             echo -e "${NC}"
             
-            echo -e "${YELLOW}Updating package lists...${NC}"
-            run_sudo_command "apt-get update" "Updating package lists..."
+            # Create a temporary script to run both commands
+            TEMP_SCRIPT=$(mktemp)
+            echo "#!/bin/bash" > "$TEMP_SCRIPT"
+            echo "apt-get update" >> "$TEMP_SCRIPT"
+            echo "apt-get install -y git cmake make g++ curl python3 python3-venv python3-pip bc" >> "$TEMP_SCRIPT"
+            chmod +x "$TEMP_SCRIPT"
             
-            echo -e "${YELLOW}Installing packages...${NC}"
-            run_sudo_command "apt-get install -y git cmake make g++ curl python3 python3-venv python3-pip bc" "Installing packages..."
+            # Run the script with a single sudo call
+            print_color "YELLOW" "Updating package lists and installing packages..." "info"
+            print_color "CYAN" "Please enter your password when prompted" "info"
+            sudo "$TEMP_SCRIPT" &
+            spinner $!
             
-            print_color "BOLD_GREEN" "Dependencies installed successfully!" "success"
+            # Clean up
+            rm -f "$TEMP_SCRIPT"
+            
+            if [ $? -eq 0 ]; then
+                print_color "BOLD_GREEN" "Dependencies installed successfully!" "success"
+            else
+                print_color "RED" "Failed to install dependencies" "error"
+                return 1
+            fi
             ;;
         arch)
             print_color "YELLOW" "Installing dependencies for Arch Linux..." "subheader"
@@ -1367,16 +1360,24 @@ model_selection_menu() {
     done
     
     echo
-    read -p "$(echo -e ${BOLD_GREEN}Enter numbers for models to download \(space-separated, or 'a' for all\):${NC} )" -r choices
-    echo
+    echo -e "${BOLD_WHITE}Enter the numbers of models to download (comma-separated), 'a' for all, or just press Enter to cancel:${NC}"
+    echo -ne "${YELLOW}> ${BOLD_PURPLE}"
+    read model_selection
+    echo -ne "${NC}"
     
-    if [[ $choices == "a" || $choices == "A" ]]; then
+    # Handle empty input gracefully
+    if [ -z "$model_selection" ]; then
+        print_color "YELLOW" "No models selected. Returning to main menu." "info"
+        return 0  # Return success (0) to avoid triggering error handling
+    fi
+    
+    if [[ $model_selection == "a" || $model_selection == "A" ]]; then
         animate_text "Selecting all models..." "BOLD_GREEN"
         for i in "${!models[@]}"; do
                 selected+=($i)
         done
     else
-        for choice in $choices; do
+        for choice in $model_selection; do
             idx=$((choice-1))
             if [ $idx -ge 0 ] && [ $idx -lt ${#models[@]} ]; then
                     selected+=($idx)
@@ -1546,25 +1547,44 @@ model_selection_menu() {
 display_tui_menu() {
     # Use a static variable to track if this is the first run
     if [ -z "$MENU_DISPLAYED" ]; then
-    clear
-    display_logo
+        clear
+        display_logo
         MENU_DISPLAYED=1
     else
         clear
     fi
     
     echo -e "${BOLD_PURPLE}===== DiffuGen Setup Menu ====="
+    echo
 
-    echo -e "${YELLOW}1. Install dependencies"
-    echo -e "${YELLOW}2. Clone/update stable-diffusion.cpp"
-    echo -e "${YELLOW}3. Build stable-diffusion.cpp"
-    echo -e "${YELLOW}4. Set up Python environment"
-    echo -e "${YELLOW}5. Download models"
-    echo -e "${YELLOW}6. Update configuration files"
-    echo -e "${BOLD_YELLOW}7. Run all steps ${PURPLE}(recommended)"
-    echo -e "${YELLOW}8. ${YELLOW}Model Manager"
-    echo -e "${PURPLE}9. ${BOLD_PURPLE}Display Guide"
-    echo -e "${RED}10. ${BOLD_RED}Exit"
+    echo -e "${YELLOW}1. Install dependencies${NC} ${CYAN}(~2 min)${NC}"
+    echo -e "   ${WHITE}Install required packages for building and running DiffuGen${NC}"
+    
+    echo -e "${YELLOW}2. Clone/update stable-diffusion.cpp${NC} ${CYAN}(~1 min)${NC}"
+    echo -e "   ${WHITE}Get or update the core stable-diffusion.cpp code repository${NC}"
+    
+    echo -e "${YELLOW}3. Build stable-diffusion.cpp${NC} ${CYAN}(~10-20 min)${NC}"
+    echo -e "   ${WHITE}Compile the stable-diffusion.cpp library - CPU intensive${NC}"
+    
+    echo -e "${YELLOW}4. Set up Python environment${NC} ${CYAN}(~2 min)${NC}"
+    echo -e "   ${WHITE}Create virtual environment and install Python dependencies${NC}"
+    
+    echo -e "${YELLOW}5. Update configuration files${NC} ${CYAN}(~1 min)${NC}"
+    echo -e "   ${WHITE}Configure file paths for your system${NC}"
+    
+    echo -e "${YELLOW}6. Download models${NC} ${CYAN}(long process - may take hours)${NC}"
+    echo -e "   ${WHITE}Download Stable Diffusion models (several GB of data)${NC}"
+    
+    echo -e "${BOLD_YELLOW}7. Run all steps ${PURPLE}(recommended)${NC}"
+    echo -e "   ${WHITE}Complete setup with all essential components${NC}"
+    
+    echo -e "${YELLOW}8. ${YELLOW}Model Manager${NC}"
+    echo -e "   ${WHITE}Manage, view, and clean up downloaded models${NC}"
+    
+    echo -e "${PURPLE}9. ${BOLD_PURPLE}Display Guide${NC}"
+    echo -e "   ${WHITE}View comprehensive usage instructions${NC}"
+    
+    echo -e "${RED}10. ${BOLD_RED}Exit${NC}"
     echo
     
     echo -ne "${YELLOW}Enter your choice ${BOLD_PURPLE}(${BOLD_PURPLE}1${BOLD_PURPLE}-${BOLD_PURPLE}10${BOLD_PURPLE}): ${BOLD_PURPLE}"
@@ -1594,12 +1614,17 @@ display_tui_menu() {
             display_tui_menu
             ;;
         5)
-            run_with_error_handling "Downloading models" "" model_selection_menu
+            run_with_error_handling "Updating configuration files" "" update_file_paths
             read -p "Press Enter to continue..."
             display_tui_menu
             ;;
         6)
-            run_with_error_handling "Updating configuration files" "" update_file_paths
+            # Run model_selection_menu directly
+            model_selection_menu
+            # Check return code but don't trigger error handling for cancellation
+            if [ $? -ne 0 ]; then
+                print_color "YELLOW" "Model download was cancelled or failed." "info"
+            fi
             read -p "Press Enter to continue..."
             display_tui_menu
             ;;
@@ -1608,8 +1633,24 @@ display_tui_menu() {
             run_with_error_handling "Setting up stable-diffusion.cpp" "" setup_stable_diffusion_cpp
             run_with_error_handling "Building stable-diffusion.cpp" "" build_stable_diffusion_cpp
             run_with_error_handling "Setting up Python environment" "" setup_venv
-            run_with_error_handling "Downloading models" "" model_selection_menu
             run_with_error_handling "Updating configuration files" "" update_file_paths
+            
+            # Ask about model downloads
+            echo
+            print_color "BOLD_YELLOW" "DiffuGen core setup is complete!" "success"
+            echo
+            print_color "BOLD_CYAN" "Would you like to download models now?" "info"
+            echo -e "${BOLD_WHITE}Models are large files (1-10GB each) and may take a long time to download."
+            echo -e "${BOLD_WHITE}You can always download them later using option 6 from the main menu.${NC}"
+            echo
+            read -p "$(echo -e ${BOLD_YELLOW}Download models now? \(y/n\)${NC} )" -n 1 -r
+            echo
+            
+            if [[ $REPLY =~ ^[Yy]$ ]]; then
+                run_with_error_handling "Downloading models" "" model_selection_menu
+            else
+                print_color "YELLOW" "Skipping model downloads. You can download them later from the main menu." "info"
+            fi
             
             print_color "GREEN" "DiffuGen setup completed successfully!" "success"
             
