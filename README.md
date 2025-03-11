@@ -750,7 +750,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 - [Black Forest Labs ](https://blackforestlabs.ai/)for their Flux Models
 - [Hugging Face](https://huggingface.co/) for the download links
 - All contributors to the MCP protocol
-- My Awesome Wifey for everything else <3
+- My Awesome Wifey for everything else ❤️
 
 ## 📬 Contact
 
