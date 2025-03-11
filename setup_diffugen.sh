@@ -1255,7 +1255,7 @@ update_file_paths() {
         cp "$file" "$backup_dir/$file.orig"
         
         # Replace all instances of /path/to/diffugen with the actual path
-        sed -i.bak "s|/path/to/diffugen|$current_dir|g" "$file" 2>/dev/null
+        sed -i "s|/path/to/diffugen|$current_dir|g" "$file" 2>/dev/null
         
         # Also replace any remaining hardcoded paths that might exist
         # This handles the case where paths like /mnt/... might still be in the files
