@@ -10,6 +10,9 @@
 initialize_paths() {
     print_color "PURPLE" "Setting up essential paths and directories..." "subheader"
     
+    # Declare MODELS_DIR as global
+    global MODELS_DIR
+    
     # Get the absolute path of the script directory
     SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     
@@ -1002,6 +1005,21 @@ verify_python_version() {
     
     # Get Python version
     local python_version=$(python3 --version 2>&1 | awk '{print $2}')
+    print_color "YELLOW" "Detected Python version: $python_version" "info"
+    
+    # Extract major and minor version
+    local major_version=$(echo $python_version | cut -d. -f1)
+    local minor_version=$(echo $python_version | cut -d. -f2)
+    
+    # Check if version meets requirements (Python 3.8+)
+    if [ "$major_version" -lt 3 ] || ([ "$major_version" -eq 3 ] && [ "$minor_version" -lt 8 ]); then
+        print_color "RED" "Python version too old. Python 3.8 or higher is required." "error"
+        print_color "YELLOW" "Current version: $python_version" "warning"
+        return 1
+    fi
+    
+    print_color "GREEN" "Python version check passed: $python_version" "success"
+    return 0
 }
 
 # Function to set up virtual environment
@@ -1013,7 +1031,7 @@ setup_venv() {
     print_color "YELLOW" "Detected Python version: $python_version" "info"
     
     # Check if venv already exists
-    if [ -d "flux-mcp-env" ]; then
+    if [ -d "diffugen_env" ]; then
         print_color "YELLOW" "Virtual environment already exists." "info"
         echo -e "${BOLD_YELLOW}Would you like to reuse the existing environment or create a fresh one?${NC}"
         echo -e "${BOLD_PURPLE}1. ${BOLD_WHITE}Reuse existing (faster)${NC}"
@@ -1023,8 +1041,8 @@ setup_venv() {
         
         if [[ $REPLY =~ ^[2]$ ]]; then
             print_color "YELLOW" "Removing existing virtual environment..." "info"
-            rm -rf flux-mcp-env
-            if [ ! -d "flux-mcp-env" ]; then
+            rm -rf diffugen_env
+            if [ ! -d "diffugen_env" ]; then
                 print_color "GREEN" "Existing environment removed successfully." "success"
             else
                 print_color "RED" "Failed to remove existing environment." "error"
@@ -1035,7 +1053,7 @@ setup_venv() {
             VENV_CREATED_THIS_SESSION=false
             # Just activate and proceed
             echo -e "${YELLOW}Activating virtual environment...${NC}"
-            source flux-mcp-env/bin/activate
+            source diffugen_env/bin/activate
             if [ $? -ne 0 ]; then
                 print_color "RED" "Failed to activate virtual environment." "error"
                 return 1
@@ -1049,10 +1067,10 @@ setup_venv() {
     
     # Create virtual environment with animation
     echo -e "${YELLOW}Creating Python virtual environment...${NC}"
-    python3 -m venv flux-mcp-env > /dev/null 2>&1 &
+    python3 -m venv diffugen_env > /dev/null 2>&1 &
     spinner $!
     
-    if [ ! -d "flux-mcp-env" ]; then
+    if [ ! -d "diffugen_env" ]; then
         print_color "RED" "Failed to create virtual environment." "error"
         return 1
     fi
@@ -1064,7 +1082,7 @@ setup_venv() {
     
     # Activate virtual environment
     echo -e "${YELLOW}Activating virtual environment...${NC}"
-    source flux-mcp-env/bin/activate
+    source diffugen_env/bin/activate
     
     if [ $? -ne 0 ]; then
         print_color "RED" "Failed to activate virtual environment." "error"
@@ -1072,6 +1090,13 @@ setup_venv() {
     fi
     
     print_color "GREEN" "Virtual environment activated!" "success"
+    
+    # Check if requirements.txt exists
+    if [ ! -f "requirements.txt" ]; then
+        print_color "RED" "requirements.txt not found. Cannot install Python dependencies." "error"
+        print_color "YELLOW" "Please make sure the requirements.txt file exists in the current directory." "warning"
+        return 1
+    fi  # Changed from } to fi to properly close the if statement
     
     # Install dependencies with progress animation
     echo -e "${YELLOW}Installing Python dependencies...${NC}"
@@ -1092,7 +1117,7 @@ setup_venv() {
     print_color "GREEN" "✅ Python environment setup complete! ✅" "success"
     echo -e "${BOLD_GREEN}┌─────────────────────────────────────────────────────────┐"
     echo -e "│ ${WHITE}Virtual environment:${BOLD_GREEN}                            │"
-    echo -e "│ ${BOLD_WHITE}$(pwd)/flux-mcp-env${BOLD_GREEN}                        │"
+    echo -e "│ ${BOLD_WHITE}$(pwd)/diffugen_env${BOLD_GREEN}                        │"
     echo -e "└─────────────────────────────────────────────────────────┘${NC}"
     
     return 0
@@ -1104,6 +1129,22 @@ update_file_paths() {
     
     local current_dir=$(pwd)
     print_color "YELLOW" "Current directory: $current_dir" "info"
+    
+    echo -e "${YELLOW}Checking for configuration files...${NC}"
+    
+    # Check if required files exist
+    local missing_files=0
+    for file in diffugen.json diffugen.sh diffugen.py; do
+        if [ ! -f "$file" ]; then
+            print_color "RED" "Missing file: $file" "error"
+            missing_files=$((missing_files + 1))
+        fi
+    done
+    
+    if [ $missing_files -gt 0 ]; then
+        print_color "RED" "Cannot update paths: $missing_files required files are missing." "error"
+        return 1
+    fi
     
     echo -e "${YELLOW}Updating paths in configuration files...${NC}"
     
@@ -1141,10 +1182,10 @@ update_file_paths() {
         fi
         
         # Check if the virtual environment path needs updating
-        if grep -q "flux-mcp-env" "$file"; then
+        if grep -q "diffugen_env" "$file"; then
             # Ensure the path to the venv is correct
-            local venv_path="$current_dir/flux-mcp-env"
-            sed -i "s|/[^\"']*/flux-mcp-env|$venv_path|g" "$file" 2>/dev/null
+            local venv_path="$current_dir/diffugen_env"
+            sed -i "s|/[^\"']*/diffugen_env|$venv_path|g" "$file" 2>/dev/null
         fi
         
         if [ $? -eq 0 ]; then
@@ -1522,17 +1563,23 @@ model_selection_menu() {
     for idx in "${selected[@]}"; do
         IFS=':' read -r name url description <<< "${models[$idx]}"
         
-        # Process URL
+        # Process URL with better validation
         echo -e "${BOLD_CYAN}Processing URL for ${WHITE}$name${NC}"
-        
-        # Remove any duplicate https:// prefixes that might have been added
-        url=$(echo "$url" | sed 's|^https://https://|https://|')
-        
-        # Make sure the URL has exactly one https:// prefix
-        if [[ ! "$url" =~ ^https?:// ]]; then
-            url="https://$url"
+
+        # Validate URL format before proceeding
+        if [[ ! "$url" =~ ^https?://[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/ ]]; then
+            if [[ "$url" =~ ^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/ ]]; then
+                # URL is missing protocol
+                url="https://$url"
+                print_color "YELLOW" "Added https:// prefix to URL" "info"
+            else
+                print_color "RED" "Invalid URL format: $url" "error"
+                print_color "YELLOW" "URL must be a valid web address starting with http:// or https://" "warning"
+                all_downloads_successful=false
+                continue
+            fi
         fi
-        
+
         echo -e "${BOLD_CYAN}Final URL: ${WHITE}$url${NC}"
         
         # Final validation check
@@ -2735,4 +2782,57 @@ trap handle_interrupt INT TERM
 display_tui_menu
 
 exit 0
+
+# Add a comprehensive dependency check function
+check_dependencies() {
+    print_color "PURPLE" "Checking for required dependencies..." "subheader"
+    
+    local missing_deps=0
+    local critical_deps=("git" "curl" "python3" "pip")
+    
+    # Check critical dependencies first
+    for dep in "${critical_deps[@]}"; do
+        echo -ne "${YELLOW}Checking for ${BOLD_WHITE}$dep${NC}... "
+        if command_exists $dep; then
+            echo -e "${BOLD_GREEN}✓${NC}"
+        else
+            echo -e "${BOLD_RED}✗${NC}"
+            print_color "RED" "Critical dependency missing: $dep" "error"
+            missing_deps=$((missing_deps + 1))
+        fi
+    done
+    
+    # Check build dependencies if we're planning to build
+    if [[ "$1" == "build" ]]; then
+        local build_deps=("cmake" "make" "g++")
+        
+        for dep in "${build_deps[@]}"; do
+            echo -ne "${YELLOW}Checking for ${BOLD_WHITE}$dep${NC}... "
+            if command_exists $dep; then
+                echo -e "${BOLD_GREEN}✓${NC}"
+            else
+                echo -e "${BOLD_RED}✗${NC}"
+                print_color "YELLOW" "Build dependency missing: $dep" "warning"
+                missing_deps=$((missing_deps + 1))
+            fi
+        done
+    fi
+    
+    if [ $missing_deps -gt 0 ]; then
+        print_color "YELLOW" "Some dependencies are missing. Would you like to install them?" "warning"
+        read -p "$(echo -e ${BOLD_YELLOW}Install missing dependencies? \(y/n\)${NC} )" -n 1 -r
+        echo
+        
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            install_dependencies
+            return $?
+        else
+            print_color "RED" "Cannot proceed without required dependencies." "error"
+            return 1
+        fi
+    fi
+    
+    print_color "GREEN" "✓ All required dependencies are installed" "success"
+    return 0
+}
 
