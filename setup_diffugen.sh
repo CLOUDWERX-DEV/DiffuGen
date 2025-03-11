@@ -11,6 +11,22 @@ command_exists() {
     command -v "$1" >/dev/null 2>&1
 }
 
+# Function to perform cross-platform sed in-place edit
+cross_platform_sed() {
+    local pattern="$1"
+    local file="$2"
+    
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        # macOS requires an extension for -i
+        sed -i '' "$pattern" "$file" 2>/dev/null
+    else
+        # Linux and Windows (in WSL)
+        sed -i "$pattern" "$file" 2>/dev/null
+    fi
+    
+    return $?
+}
+
 # Add a comprehensive dependency check function
 check_dependencies() {
     local build_type="${1:-general}"
@@ -1254,25 +1270,40 @@ update_file_paths() {
         # Create a backup
         cp "$file" "$backup_dir/$file.orig"
         
+        # Normalize path for the current OS
+        local normalized_path="$current_dir"
+        
+        # For Windows compatibility, escape backslashes in the path for sed
+        if [[ "$os_type" == "windows" ]]; then
+            # Double escape backslashes for sed on Windows
+            normalized_path=$(echo "$current_dir" | sed 's/\\/\\\\\\\\/g')
+        fi
+        
         # Replace all instances of /path/to/diffugen with the actual path
-        sed -i "s|/path/to/diffugen|$current_dir|g" "$file" 2>/dev/null
+        cross_platform_sed "s|/path/to/diffugen|$normalized_path|g" "$file"
         
         # Also replace any remaining hardcoded paths that might exist
         # This handles the case where paths like /mnt/... might still be in the files
         if grep -q "/mnt/" "$file"; then
-            sed -i "s|/mnt/[^/]*/Servers/MCP/Tools/DiffuGen|$current_dir|g" "$file" 2>/dev/null
+            cross_platform_sed "s|/mnt/[^/]*/Servers/MCP/Tools/DiffuGen|$normalized_path|g" "$file"
         fi
         
         # Also handle other potential path patterns
         if grep -q "/home/" "$file"; then
-            sed -i "s|/home/[^/]*/[^/]*/Servers/MCP/Tools/DiffuGen|$current_dir|g" "$file" 2>/dev/null
+            cross_platform_sed "s|/home/[^/]*/[^/]*/Servers/MCP/Tools/DiffuGen|$normalized_path|g" "$file"
         fi
         
         # Check if the virtual environment path needs updating
         if grep -q "diffugen_env" "$file"; then
             # Ensure the path to the venv is correct
             local venv_path="$current_dir/diffugen_env"
-            sed -i "s|/[^\"']*/diffugen_env|$venv_path|g" "$file" 2>/dev/null
+            
+            # For Windows compatibility, escape backslashes in the venv path
+            if [[ "$os_type" == "windows" ]]; then
+                venv_path=$(echo "$venv_path" | sed 's/\\/\\\\\\\\/g')
+            fi
+            
+            cross_platform_sed "s|/[^\"']*/diffugen_env|$venv_path|g" "$file"
         fi
         
         # For diffugen.py specifically, ensure the sd_cpp_path line is updated with the full path
@@ -1282,9 +1313,14 @@ update_file_paths() {
             # Define the full path to stable-diffusion.cpp
             local sd_cpp_full_path="$current_dir/stable-diffusion.cpp"
             
+            # For Windows compatibility, escape backslashes in the path
+            if [[ "$os_type" == "windows" ]]; then
+                sd_cpp_full_path=$(echo "$sd_cpp_full_path" | sed 's/\\/\\\\\\\\/g')
+            fi
+            
             # Update the sd_cpp_path line with the full absolute path, regardless of its current format
             # This will handle both the dynamic path and any hardcoded path
-            sed -i "s|sd_cpp_path = os.environ.get(\"SD_CPP_PATH\", .*)|sd_cpp_path = os.environ.get(\"SD_CPP_PATH\", \"$sd_cpp_full_path\")|g" "$file" 2>/dev/null
+            cross_platform_sed "s|sd_cpp_path = os.environ.get(\"SD_CPP_PATH\", .*)|sd_cpp_path = os.environ.get(\"SD_CPP_PATH\", \"$sd_cpp_full_path\")|g" "$file"
             
             if [ $? -eq 0 ]; then
                 echo -e "${BOLD_GREEN}✓${NC}"
