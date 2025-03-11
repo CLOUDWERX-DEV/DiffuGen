@@ -1,0 +1,91 @@
+# DiffuGen .gitignore
+# Made with ❤️ by CLOUDWERX LAB - "Digital Food for the Analog Soul"
+
+# Python virtual environment
+flux-mcp-env/
+venv/
+env/
+ENV/
+.env
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+*.egg
+
+# Model files and weights (often large)
+*.ckpt
+*.safetensors
+*.bin
+*.pth
+*.onnx
+models/
+
+# Generated content
+outputs/
+results/
+generated/
+samples/
+
+# Logs and databases
+*.log
+*.sqlite
+*.db
+logs/
+
+# IDE specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+.project
+.pydevproject
+.settings/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Environment configuration
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Temporary files
+tmp/
+temp/
+.tmp/
+.temp/
+
+# User-specific configuration
+config.local.json
+security_config.json
+user_preferences.json
+
+# Dependency directories
+node_modules/
+jspm_packages/
+
+# Coverage reports
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+
+# Backup files
+*.bak
+*~ 
