@@ -1275,6 +1275,25 @@ update_file_paths() {
             sed -i "s|/[^\"']*/diffugen_env|$venv_path|g" "$file" 2>/dev/null
         fi
         
+        # For diffugen.py specifically, ensure the sd_cpp_path line is updated with the full path
+        if [ "$file" = "diffugen.py" ]; then
+            echo -ne "\n${YELLOW}Updating SD_CPP_PATH in ${BOLD_WHITE}$file${YELLOW}...${NC} "
+            
+            # Define the full path to stable-diffusion.cpp
+            local sd_cpp_full_path="$current_dir/stable-diffusion.cpp"
+            
+            # Update the sd_cpp_path line with the full absolute path, regardless of its current format
+            # This will handle both the dynamic path and any hardcoded path
+            sed -i "s|sd_cpp_path = os.environ.get(\"SD_CPP_PATH\", .*)|sd_cpp_path = os.environ.get(\"SD_CPP_PATH\", \"$sd_cpp_full_path\")|g" "$file" 2>/dev/null
+            
+            if [ $? -eq 0 ]; then
+                echo -e "${BOLD_GREEN}✓${NC}"
+            else
+                echo -e "${BOLD_RED}✗${NC}"
+                print_color "RED" "Failed to update SD_CPP_PATH in $file" "error"
+            fi
+        fi
+        
         if [ $? -eq 0 ]; then
             echo -e "${BOLD_GREEN}✓${NC}"
         else

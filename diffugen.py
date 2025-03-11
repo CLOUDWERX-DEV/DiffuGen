@@ -141,7 +141,27 @@ import re
 from pathlib import Path
 
 # Get the path to the stable-diffusion.cpp directory from environment or use default
-sd_cpp_path = os.environ.get("SD_CPP_PATH", "/path/to/DiffuGen/stable-diffusion.cpp")
+sd_cpp_path = os.environ.get("SD_CPP_PATH", os.path.join(os.getcwd(), "stable-diffusion.cpp"))
+
+# Get the default output directory from environment variable or use current directory
+default_output_dir = os.environ.get("DIFFUGEN_OUTPUT_DIR", os.getcwd())
+
+# Try to read from MCP configuration if available
+try:
+    cursor_mcp_path = os.path.join(os.getcwd(), ".cursor", "mcp.json")
+    if os.path.exists(cursor_mcp_path):
+        import json
+        with open(cursor_mcp_path, 'r') as f:
+            mcp_config = json.load(f)
+            if 'resources' in mcp_config and 'output_dir' in mcp_config['resources']:
+                default_output_dir = mcp_config['resources']['output_dir']
+                logging.debug(f"Using output directory from MCP configuration: {default_output_dir}")
+except Exception as e:
+    logging.debug(f"Failed to read MCP configuration: {e}")
+
+# Create the output directory if it doesn't exist
+os.makedirs(default_output_dir, exist_ok=True)
+logging.debug(f"Default output directory: {default_output_dir}")
 
 # Define model paths based on the SD_CPP_PATH
 MODEL_PATHS = {
@@ -194,7 +214,7 @@ def generate_stable_diffusion_image(prompt: str, model: str = "flux-schnell", ou
     
     # Determine output directory
     if not output_dir:
-        output_dir = os.getcwd()
+        output_dir = default_output_dir
     os.makedirs(output_dir, exist_ok=True)
     output_path = os.path.join(output_dir, filename)
     
@@ -317,6 +337,11 @@ def generate_flux_image(prompt: str, output_dir: str = None, cfg_scale: float = 
     Returns:
         A dictionary containing the path to the generated image and the command used
     """
+    # If output_dir is None, use the default_output_dir
+    if output_dir is None:
+        output_dir = default_output_dir
+        logging.debug(f"Using default output directory: {default_output_dir}")
+        
     return generate_stable_diffusion_image(
         prompt=prompt,
         model="flux-schnell",

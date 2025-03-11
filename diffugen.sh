@@ -9,6 +9,28 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 echo "Script directory: $SCRIPT_DIR"
 
+# Set default output directory
+DEFAULT_OUTPUT_DIR="$SCRIPT_DIR/outputs"
+echo "Default output directory: $DEFAULT_OUTPUT_DIR"
+
+# Check for Cursor MCP configuration
+MCP_CONFIG_PATH="$SCRIPT_DIR/.cursor/mcp.json"
+if [ -f "$MCP_CONFIG_PATH" ]; then
+    echo "Found Cursor MCP configuration"
+    # Try to extract output_dir from MCP configuration using grep and sed
+    OUTPUT_DIR=$(grep -o '"output_dir": *"[^"]*"' "$MCP_CONFIG_PATH" | sed 's/"output_dir": *"\(.*\)"/\1/')
+    if [ ! -z "$OUTPUT_DIR" ]; then
+        echo "Using output directory from Cursor MCP configuration: $OUTPUT_DIR"
+        DEFAULT_OUTPUT_DIR="$OUTPUT_DIR"
+    fi
+fi
+
+# Create the output directory if it doesn't exist
+mkdir -p "$DEFAULT_OUTPUT_DIR"
+
+# Set the environment variable
+export DIFFUGEN_OUTPUT_DIR="$DEFAULT_OUTPUT_DIR"
+
 # Activate virtual environment
 VENV_PATH="$SCRIPT_DIR/diffugen_env"
 echo "Activating virtual environment at: $VENV_PATH"
