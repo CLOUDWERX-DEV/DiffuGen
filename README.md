@@ -146,6 +146,8 @@ For troubleshooting dependency issues, consult the [DiffuGen GitHub repository](
 
 The easiest way to install DiffuGen is using the provided setup script:
 
+#### Linux Installation
+
 1. Clone the repository:
    
    ```bash
@@ -161,6 +163,102 @@ The easiest way to install DiffuGen is using the provided setup script:
    ```
 
 3. Follow the interactive prompts to complete the installation.
+
+#### macOS Installation
+
+1. Install Homebrew if not already installed:
+   
+   ```bash
+   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+   ```
+
+2. Install Git if not already installed:
+   
+   ```bash
+   brew install git
+   ```
+
+3. Clone the repository:
+   
+   ```bash
+   git clone https://github.com/CLOUDWERX-DEV/diffugen.git
+   cd diffugen
+   ```
+
+4. Make the setup script executable and run it:
+   
+   ```bash
+   chmod +x setup_diffugen.sh
+   ./setup_diffugen.sh
+   ```
+
+5. The script will automatically detect macOS and install necessary dependencies (cmake, make, gcc, curl, python3, bc) using Homebrew before proceeding with the DiffuGen setup.
+
+6. Follow the interactive prompts to complete the installation.
+
+#### Windows Installation
+
+**Option 1: Using Windows Subsystem for Linux (WSL) - Recommended**
+
+1. Install WSL by opening PowerShell as Administrator and running:
+   
+   ```powershell
+   wsl --install
+   ```
+
+2. Restart your computer when prompted.
+
+3. After restart, a Ubuntu terminal will open. Set up your Linux username and password.
+
+4. Update the package lists and install git:
+   
+   ```bash
+   sudo apt update
+   sudo apt install git
+   ```
+
+5. Clone the repository:
+   
+   ```bash
+   git clone https://github.com/CLOUDWERX-DEV/diffugen.git
+   cd diffugen
+   ```
+
+6. Run the setup script:
+   
+   ```bash
+   chmod +x setup_diffugen.sh
+   ./setup_diffugen.sh
+   ```
+
+7. Follow the interactive prompts to complete the installation.
+
+**Option 2: Native Windows Installation**
+
+1. Install Git for Windows from [git-scm.com](https://git-scm.com/download/win)
+
+2. Install Visual Studio with C++ development tools from [visualstudio.microsoft.com](https://visualstudio.microsoft.com/downloads/)
+
+3. Install CMake from [cmake.org](https://cmake.org/download/)
+
+4. Install Python 3.8+ from [python.org](https://www.python.org/downloads/)
+
+5. Open Git Bash and clone the repository:
+   
+   ```bash
+   git clone https://github.com/CLOUDWERX-DEV/diffugen.git
+   cd diffugen
+   ```
+
+6. Run the setup script (use PowerShell if available):
+   
+   ```bash
+   ./setup_diffugen.sh
+   ```
+
+7. The script will detect Windows and attempt to install dependencies using Chocolatey. If PowerShell is available, it will install Chocolatey and use it to install the required dependencies.
+
+8. Follow the interactive prompts to complete the installation.
 
 The setup script will:
 
@@ -258,24 +356,6 @@ cd ../..
 
 6. Download required models:
    
-   Yes, the model selection menu looks good. It now includes all the necessary models that match what's referenced in your diffugen.py file, including:
-
-7. The core Flux models (Schnell and Dev)
-
-8. Required components (T5XXL, CLIP-L, and VAE)
-
-9. SDXL with its required VAE
-
-10. SD15 (Stable Diffusion 1.5)
-
-11. SD3 (Stable Diffusion 3 Medium)
-
-This comprehensive selection will give users options ranging from fast generation (Flux Schnell) to high-quality outputs (SDXL, SD3).
-
-For the manual download section of the README, here's the updated version:
-
-## Manual Model Download
-
 If you prefer to download models manually instead of using the automated setup script, follow these instructions to ensure all files are placed in their correct locations.
 
 ### Required Models
