@@ -1175,117 +1175,53 @@ update_file_paths() {
 download_file() {
     local url="$1"
     local dest_path="$2"
-    local name="$3"
-    local max_retries="${4:-3}"
+    local file_name="$3"
+    local retries="${4:-3}"
     
-    # Enter critical section
-    set_critical_operation true "download"
-    current_model_name="$name"
+    mkdir -p "$(dirname "$dest_path")"
+    
+    # Set the current download file for tracking
+    current_model_name="$file_name"
     current_download_file="$dest_path"
     
-    # Debug info
-    echo -e "${BOLD_CYAN}Downloading: ${WHITE}$name${NC}"
-    echo -e "${BOLD_CYAN}Source: ${WHITE}$url${NC}"
-    echo -e "${BOLD_CYAN}Destination: ${WHITE}$dest_path${NC}"
+    echo -e "${BOLD_CYAN}Downloading ${WHITE}$file_name${CYAN} to ${WHITE}$dest_path${NC}"
     
-    # Create parent directory if it doesn't exist
-    local parent_dir=$(dirname "$dest_path")
-    mkdir -p "$parent_dir"
-    if [ $? -ne 0 ]; then
-        print_color "BOLD_RED" "Failed to create directory: $parent_dir" "error"
-        set_critical_operation false
-        return 1
-    fi
+    # ===== REMOVE THIS LINE IF IT EXISTS =====
+    # echo -e "${BOLD_WHITE}Download Progress${NC}"
+    # echo -e "Downloading..."
+    # ===========================================
     
-    # Prepare download
-    local retry_count=0
-    local download_success=false
+    # Create a single download progress header
+    echo -e "${BOLD_WHITE}┌────────────────────────────────────────────────────────┐"
+    echo -e "│ ${CYAN}Downloading: ${WHITE}$file_name${BOLD_WHITE}                                  "
+    echo -e "└────────────────────────────────────────────────────────┘${NC}"
     
-    while [ $retry_count -lt $max_retries ] && [ "$download_success" = false ]; do
-        # Clear previous attempt messages if retrying
-        if [ $retry_count -gt 0 ]; then
-            echo -e "${BOLD_YELLOW}Retry attempt $retry_count of $max_retries...${NC}"
-            sleep 1
-        fi
-        
-        # Create a temporary file with a unique and more secure name
-        local temp_file="/tmp/diffugen_download_$(date +%s)_$$.part"
-        
-        # Add temp file to tracked files for this session
-        TEMP_FILES_CREATED_THIS_SESSION+=("$temp_file")
-        
-        # Create a visual separator for the download progress
-        echo -e "\n${BOLD_BLUE}┌────────────────────────────────────────────────────────┐"
-        echo -e "│ ${WHITE}Download Progress${BOLD_BLUE}                                  "
-        echo -e "└────────────────────────────────────────────────────────┘${NC}"
-        
-        # Wait for terminal to be ready
-        sleep 0.5
-        
-        # Show download message and clear any existing progress bars
-        echo -e "${BOLD_YELLOW}Downloading...${NC}"
-        
-        # Make sure terminal is clear of any previous progress indicators
-        echo -ne "\033[2K\r"
-        
-        # Download with progress bar
-        curl -L "$url" -o "$temp_file" \
-            --progress-bar \
-            --retry 2 \
-            --retry-delay 3 \
-            --connect-timeout 30 \
-            --max-time 3600
-        
-        # Clear the line after curl finishes to ensure clean output
-        echo -ne "\033[2K\r"
-        
-        local curl_status=$?
-        
-        # Handle download result
-        if [ $curl_status -eq 0 ] && [ -f "$temp_file" ]; then
-            # Get file size and verify it's not empty
-            local file_size=$(du -h "$temp_file" | cut -f1)
-            local file_bytes=$(stat -c %s "$temp_file" 2>/dev/null || stat -f %z "$temp_file" 2>/dev/null)
-            
-            if [ "$file_bytes" -lt 1000 ]; then
-                echo -e "${BOLD_RED}Warning: Downloaded file is very small ($file_bytes bytes). This may indicate a problem.${NC}"
-                read -p "$(echo -e ${BOLD_YELLOW}Continue anyway? \(y/n\)${NC} )" -n 1 -r
-                echo
-                if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-                    rm -f "$temp_file"
-                    echo -e "${BOLD_YELLOW}Download canceled. File removed.${NC}"
-                    set_critical_operation false
-                    return 1
-                fi
-            fi
-            
-            # Move file to destination
-            if mv "$temp_file" "$dest_path"; then
-                echo -e "${BOLD_GREEN}✅ Download complete: ${WHITE}$name ${BOLD_GREEN}(${CYAN}$file_size${BOLD_GREEN})${NC}"
-                echo -e "${BOLD_WHITE}File saved to: ${CYAN}$dest_path${NC}"
-                download_success=true
-            else
-                echo -e "${BOLD_RED}Failed to save file to destination.${NC}"
-                rm -f "$temp_file"
-                retry_count=$((retry_count + 1))
-            fi
+    # Download with a single progress indicator
+    local attempt=1
+    while [ $attempt -le $retries ]; do
+        if curl -# -L -o "$dest_path" "$url"; then
+            echo -e "${BOLD_GREEN}✓ Download successful: ${WHITE}$file_name${NC}"
+            # Clear download tracking once complete
+            current_model_name=""
+            current_download_file=""
+            return 0
         else
-            echo -e "${BOLD_RED}Download failed with status code: $curl_status${NC}"
-            rm -f "$temp_file"
-            retry_count=$((retry_count + 1))
+            echo -e "${BOLD_YELLOW}⚠ Download attempt $attempt failed for ${WHITE}$file_name${NC}"
+            
+            if [ $attempt -lt $retries ]; then
+                echo -e "${BOLD_YELLOW}Retrying in 3 seconds...${NC}"
+                sleep 3
+            fi
+            
+            attempt=$((attempt + 1))
         fi
     done
     
-    # Exit critical section before returning
-    local success="$download_success"
-    set_critical_operation false
-    
-    if [ "$success" = true ]; then
-        return 0
-    else
-        echo -e "${BOLD_RED}Failed to download after $max_retries attempts.${NC}"
-        return 1
-    fi
+    echo -e "${BOLD_RED}✗ Download failed after $retries attempts for ${WHITE}$file_name${NC}"
+    # Clear download tracking on failure
+    current_model_name=""
+    current_download_file=""
+    return 1
 }
 
 # Function to display model selection menu
