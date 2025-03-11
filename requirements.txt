@@ -1,9 +1,2 @@
-mcp>=0.1.0
-fastmcp>=0.1.0
-numpy>=1.19.0
-Pillow>=9.0.0
-tqdm>=4.64.0
-requests>=2.28.0
-pathlib>=1.0.1
-python-dotenv>=0.21.0
-uuid>=1.30
+mcp>=0.1.0,<0.2.0
+fastmcp>=0.1.0,<0.2.0

@@ -431,30 +431,30 @@ To use DiffuGen with MCP-compatible IDEs (Cursor, Windsurf, etc.), add the follo
       "env": {
         "DEFAULT_MODEL": "flux-schnell",
         "CUDA_VISIBLE_DEVICES": "0",
-        "SD_CPP_PATH": "./stable-diffusion.cpp"
+        "SD_CPP_PATH": "/path/to/diffugen/stable-diffusion.cpp"
       },
       "resources": {
-        "models_dir": "./stable-diffusion.cpp/models",
-        "output_dir": "./outputs",
+        "models_dir": "/path/to/diffugen/stable-diffusion.cpp/models",
+        "output_dir": "/path/to/diffugen/outputs",
         "vram_usage": "adaptive"
       },
       "metadata": {
         "name": "DiffuGen",
         "version": "1.0",
-        "description": "Advanced image generation tool powered by Stable Diffusion. Supports multiple models including Flux Schnell, Flux Dev, SDXL, and SD3. Generate high-quality images with precise control over parameters like dimensions, steps, CFG scale, seed, and negative prompts.",
-        "author": "cloudwerxlab",
-        "homepage": "https://github.com/cloudwerxlab/diffugen",
-        "usage": "Generate an image by typing: 'generate an image of [description]' with optional parameters like model, dimensions, steps, cfg, and seed. Example: 'generate an image of a cat in space using flux-dev, 1024x768, 30 steps, cfg 7, seed 42'."
+        "description": "Powerful image generation system leveraging multiple Stable Diffusion models (flux-schnell, flux-dev, sdxl, sd3, sd15). DiffuGen provides optimized performance with cross-platform compatibility and advanced parameter control for creating high-quality AI-generated images with precise customization. Supports various sampling methods and negative prompting for fine-tuned creative control.",
+        "author": "CLOUDWERX LAB",
+        "homepage": "https://github.com/CLOUDWERX-DEV/diffugen",
+        "usage": "Generate images using two primary methods:\n1. Standard generation: 'generate an image of [description]' with optional parameters:\n   - model: Choose from flux-schnell (default), flux-dev, sdxl, sd3, sd15\n   - dimensions: width and height (default: 512x512)\n   - steps: Number of diffusion steps (default: 20, lower for faster generation)\n   - cfg_scale: Guidance scale (default: 7.0, lower for more creative freedom)\n   - seed: For reproducible results (-1 for random)\n   - sampling_method: euler, euler_a (default), heun, dpm2, dpm++2s_a, dpm++2m, dpm++2mv2, lcm\n   - negative_prompt: Specify elements to avoid in the image\n2. Quick Flux generation: 'generate a flux image of [description]' for faster results with fewer steps (default: 4)"
       },
       "cursorOptions": {
         "autoApprove": true,
         "category": "Image Generation",
         "icon": "🖼️",
-        "displayName": "DiffuGen: AI Image Generator"
+        "displayName": "DiffuGen"
       },
       "windsurfOptions": {
         "displayName": "DiffuGen",
-        "icon": "image",
+        "icon": "🖼️",
         "category": "Creative Tools"
       }
     }
@@ -788,7 +788,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## 📄 License
 
-* This project is licensed under the MIT License - see the LICENSE file for details.
+* This project is licensed under the Apache License - see the LICENSE file for details.
 
 * All models are licensed under their respenctive distribution and are not in any way licensed or provided by CLOUDWERX.DEV
 
@@ -798,7 +798,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## 📄 Recent Updates
 
-### v1.0.2 Enhancements (August 2023)
+### v1.0.2 Enhancements (March 2025)
 
 - **Improved Error Handling**: Enhanced error recovery with operation-specific handling
 - **Smart Interrupt Management**: Context-aware Ctrl+C handling for better user experience
@@ -904,7 +904,9 @@ The enhanced setup script maintains full compatibility with existing installatio
 - Website:[ [cloudwerx.dev]](http://cloudwerx.dev)
 - Mail: ([sysop@cloudwerx.dev](mailto:sysop@cloudwerx.dev))
 
-
+- Join our [Discord server](https://discord.gg/SvZFuufNTQ) for discussions
+- Follow us on [X](https://twitter.com/cloudwerxlab) for updates
+- Subscribe to our [newsletter](https://cloudwerx.dev/newsletter) for major announcements
 
 ```bash
          ______   __   ___   ___         _______              

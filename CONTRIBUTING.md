@@ -111,8 +111,8 @@ If you have an idea for an enhancement, please create an issue on GitHub with th
 
 ## Community
 
-- Join our [Discord server](https://discord.gg/cloudwerx) for discussions
-- Follow us on [Twitter](https://twitter.com/cloudwerxlab) for updates
+- Join our [Discord server](https://discord.gg/SvZFuufNTQ) for discussions
+- Follow us on [X](https://twitter.com/cloudwerxlab) for updates
 - Subscribe to our [newsletter](https://cloudwerx.dev/newsletter) for major announcements
 
 Thank you for contributing to DiffuGen! 
