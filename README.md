@@ -1,11 +1,11 @@
-# DiffuGen - Advanced Stable Diffusion Image Generator with MCP Tool Capabilities
+# DiffuGen - Advanced Stable Diffusion Image Generator with MCP Integration
 
 <p align="center">
   <img src="diffugen.png" alt="DiffuGen Logo" width="200"/>
 </p>
 
 <p align="center">
-  <em>MCP Tool that will generate Stable Diffusion\Flux images anywhere, even inside your IDE with Cursor\Windsurf\Roo Code\Cline\etc</em>
+  <em>Seamlessly generate AI images directly within your development workflow. Integrates with Cursor, Windsurf, Roo Code, Cline and other MCP-compatible IDEs for frictionless creative development.</em>
 </p>
 
 <p align="center">
