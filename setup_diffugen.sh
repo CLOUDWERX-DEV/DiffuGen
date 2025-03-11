@@ -1260,36 +1260,66 @@ download_file() {
                         local completed=$(( (bar_width * percent) / 100 ))
                         local remaining=$(( bar_width - completed ))
                         
-                        # Calculate download speed (once per second)
+                        # Calculate download speed and ETA using standard methods
                         local speed_text=""
                         local eta_text=""
                         
-                        local elapsed=$(( current_time - start_time ))
-                        if [ $elapsed -gt 0 ] && [ $current_size -gt 0 ]; then
-                            local bytes_per_sec=$(( current_size / elapsed ))
+                        # Get current time and size
+                        local current_time=$(date +%s)
+                        local current_size=$(stat -c %s "$temp_file" 2>/dev/null || stat -f %z "$temp_file" 2>/dev/null)
+                        
+                        # Always calculate and show speed, using a standard approach
+                        if [ $current_size -gt 0 ]; then
+                            local bytes_per_sec=0
                             
-                            # Only show reasonable speeds
-                            if [ $bytes_per_sec -gt 0 ]; then
-                                # Format speed text
-                                if [ $bytes_per_sec -ge 1048576 ]; then
-                                    speed_text="$(echo "scale=1; $bytes_per_sec/1048576" | bc) MB/s"
-                                else
-                                    speed_text="$(echo "scale=1; $bytes_per_sec/1024" | bc) KB/s"
+                            # Calculate speed based on recent interval for more accuracy
+                            if [ $last_size -gt 0 ]; then
+                                local time_diff=$(( current_time - last_update ))
+                                # Prevent division by zero
+                                if [ $time_diff -ge 1 ]; then
+                                    local size_diff=$(( current_size - last_size ))
+                                    bytes_per_sec=$(( size_diff / time_diff ))
                                 fi
-                                
-                                # Calculate and format ETA
+                            fi
+                            
+                            # Fallback to average speed if recent speed is zero or very small
+                            if [ $bytes_per_sec -lt 1024 ]; then
+                                local elapsed=$(( current_time - start_time ))
+                                if [ $elapsed -ge 1 ]; then
+                                    bytes_per_sec=$(( current_size / elapsed ))
+                                fi
+                            fi
+                            
+                            # Format speed in human-readable units (no caps)
+                            if [ $bytes_per_sec -ge 1048576 ]; then
+                                speed_text="$(echo "scale=2; $bytes_per_sec/1048576" | bc) MB/s"
+                            elif [ $bytes_per_sec -ge 1024 ]; then
+                                speed_text="$(echo "scale=2; $bytes_per_sec/1024" | bc) KB/s"
+                            else
+                                speed_text="${bytes_per_sec} B/s"
+                            fi
+                            
+                            # Calculate and display ETA whenever we have speed data
+                            if [ $bytes_per_sec -gt 0 ]; then
                                 local remaining_bytes=$(( total_size - current_size ))
                                 local eta_seconds=$(( remaining_bytes / bytes_per_sec ))
                                 
+                                # Format ETA in human-readable units
                                 if [ $eta_seconds -ge 3600 ]; then
                                     eta_text="$(( eta_seconds / 3600 ))h $(( (eta_seconds % 3600) / 60 ))m"
                                 elif [ $eta_seconds -ge 60 ]; then
-                                    eta_text="$(( eta_seconds / 60 ))m"
+                                    eta_text="$(( eta_seconds / 60 ))m $(( eta_seconds % 60 ))s"
                                 else
                                     eta_text="${eta_seconds}s"
                                 fi
+                            else
+                                eta_text="calculating..."
                             fi
                         fi
+                        
+                        # Always update last_size and last_update
+                        last_size=$current_size
+                        last_update=$current_time
                         
                         # Clear the entire line before printing new content
                         printf "\r\033[K"
