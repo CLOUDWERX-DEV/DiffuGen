@@ -6,12 +6,106 @@
 # http://cloudwerx.dev
 # !! Open-Source !!
 
+# Function to check if a command exists
+command_exists() {
+    command -v "$1" >/dev/null 2>&1
+}
+
+# Add a comprehensive dependency check function
+check_dependencies() {
+    local build_type="${1:-general}"
+    
+    print_color "PURPLE" "Checking for required dependencies..." "subheader"
+    
+    local missing_deps=0
+    local critical_deps=("git" "curl" "python3" "pip")
+    
+    # Check critical dependencies first
+    for dep in "${critical_deps[@]}"; do
+        echo -ne "${YELLOW}Checking for ${BOLD_WHITE}$dep${NC}... "
+        if command_exists $dep; then
+            echo -e "${BOLD_GREEN}✓${NC}"
+        else
+            echo -e "${BOLD_RED}✗${NC}"
+            print_color "RED" "Critical dependency missing: $dep" "error"
+            missing_deps=$((missing_deps + 1))
+        fi
+    done
+    
+    # Check build dependencies if we're planning to build
+    if [[ "$build_type" == "build" ]]; then
+        local build_deps=("cmake" "make" "g++")
+        
+        for dep in "${build_deps[@]}"; do
+            echo -ne "${YELLOW}Checking for ${BOLD_WHITE}$dep${NC}... "
+            if command_exists $dep; then
+                echo -e "${BOLD_GREEN}✓${NC}"
+            else
+                echo -e "${BOLD_RED}✗${NC}"
+                print_color "YELLOW" "Build dependency missing: $dep" "warning"
+                missing_deps=$((missing_deps + 1))
+            fi
+        done
+    fi
+    
+    if [ $missing_deps -gt 0 ]; then
+        print_color "YELLOW" "Some dependencies are missing. Would you like to install them?" "warning"
+        read -p "$(echo -e ${BOLD_YELLOW}Install missing dependencies? \(y/n\)${NC} )" -n 1 -r
+        echo
+        
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            install_dependencies
+            return $?
+        else
+            print_color "RED" "Cannot proceed without required dependencies." "error"
+            return 1
+        fi
+    fi
+    
+    print_color "GREEN" "✓ All required dependencies are installed" "success"
+    return 0
+}
+
+# Function to run sudo commands with proper password masking
+run_sudo_command() {
+    local cmd="$1"
+    local msg="${2:-Running command with elevated privileges...}"
+    
+    # Check if we already have sudo privileges
+    if sudo -n true 2>/dev/null; then
+        print_color "BLUE" "Using existing sudo privileges" "info"
+        eval "sudo $cmd" &
+        spinner $!
+        return $?
+    fi
+    
+    # We need to ask for password
+    print_color "YELLOW" "$msg" "info"
+    print_color "CYAN" "Please enter your password when prompted" "info"
+    
+    # Use -S to read password from stdin and keep sudo timestamp updated
+    echo -e "${BOLD_CYAN}[sudo] password for $USER: ${NC}"
+    # Use sudo with -v to explicitly validate and extend the sudo timeout
+    sudo -v
+    
+    # If sudo validation was successful, run the command
+    if [ $? -eq 0 ]; then
+        # Now run the actual command with sudo
+        sudo eval "$cmd" 2>/dev/null &
+        local pid=$!
+        
+        # Show spinner while command is running
+        spinner $pid
+        return $?
+    else
+        print_color "RED" "Authentication failed" "error"
+        return 1
+    fi
+}
+
 # Function to initialize paths and directories
 initialize_paths() {
     print_color "PURPLE" "Setting up essential paths and directories..." "subheader"
-    
-    # Declare MODELS_DIR as global
-    global MODELS_DIR
     
     # Get the absolute path of the script directory
     SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -72,6 +166,7 @@ initialize_globals
 # Global variables for tracking downloads
 current_model_name=""
 current_download_file=""
+MODELS_DIR="" # Initialize MODELS_DIR globally
 
 # Session tracking variables - track what was created in this session
 VENV_CREATED_THIS_SESSION=false
@@ -233,9 +328,9 @@ display_logo() {
                echo "              (  __  \\__   __(  ____ (  ____ \\       /( ____ (  ____ ( (     /|"
                sleep 0.1
                echo -e "${YELLOW}              | (  \  )  ) (  | (    \/ (    \/ )   ( | (    \/ (    \/  \  ( |"
-               echo "              | |   ) |  | |  | (__   | (__   | |   | | |     | (__   |   \ | |"
+               echo "              | |   ) |  | |  | (__   | (__   | |   | | |     | (__   | (\ \) |"
                sleep 0.1
-               echo "              | |   | |  | |  |  __)  |  __)  | |   | | | ____|  __)  | (\ \) |"
+               echo "              | |   | |  | |  |  __)  |  __)  | |   | | | ____|  __)  | | \   |"
                sleep 0.1
                echo "              | |   ) |  | |  | (     | (     | |   | | | \_  ) (     | | \   |"
                sleep 0.1
@@ -309,48 +404,6 @@ print_color() {
             echo -e "${!color_name}${text}${NC}"
             ;;
     esac
-}
-
-# Function to check if a command exists
-command_exists() {
-    command -v "$1" >/dev/null 2>&1
-}
-
-# Function to run sudo commands with proper password masking
-run_sudo_command() {
-    local cmd="$1"
-    local msg="${2:-Running command with elevated privileges...}"
-    
-    # Check if we already have sudo privileges
-    if sudo -n true 2>/dev/null; then
-        print_color "BLUE" "Using existing sudo privileges" "info"
-        eval "sudo $cmd" &
-        spinner $!
-        return $?
-    fi
-    
-    # We need to ask for password
-    print_color "YELLOW" "$msg" "info"
-    print_color "CYAN" "Please enter your password when prompted" "info"
-    
-    # Use -S to read password from stdin and keep sudo timestamp updated
-    echo -e "${BOLD_CYAN}[sudo] password for $USER: ${NC}"
-    # Use sudo with -v to explicitly validate and extend the sudo timeout
-    sudo -v
-    
-    # If sudo validation was successful, run the command
-    if [ $? -eq 0 ]; then
-        # Now run the actual command with sudo
-        sudo eval "$cmd" 2>/dev/null &
-        local pid=$!
-        
-        # Show spinner while command is running
-        spinner $pid
-        return $?
-    else
-        print_color "RED" "Authentication failed" "error"
-        return 1
-    fi
 }
 
 # Function to detect OS with fancy output
@@ -580,18 +633,18 @@ cleanup() {
             if [[ $REPLY =~ ^[Yy]$ ]]; then
                 echo
                 print_color "YELLOW" "Removing incomplete download: $current_download_file" "info"
-                rm -f "$current_download_file" 
+                rm -f "$current_download_file"
                 if [ ! -f "$current_download_file" ]; then
                     print_color "BOLD_GREEN" "✓ Incomplete download file removed successfully" "success"
                     cleaned_items+=("Incomplete download of $current_model_name")
-            else
+                else
                     print_color "BOLD_RED" "✗ Failed to remove the incomplete download file" "error"
+                fi
+            else
+                print_color "YELLOW" "Keeping incomplete download file. You can try to resume the download later." "info"
             fi
         else
                 print_color "YELLOW" "Keeping incomplete download file. You can try to resume the download later." "info"
-        fi
-    else
-            print_color "YELLOW" "No download file found at expected location: $current_download_file" "info"
         fi
     else
         # More targeted cleanup based on operation type
@@ -805,6 +858,12 @@ run_with_error_handling() {
 
 # Function to clone or update stable-diffusion.cpp with enhanced visuals
 setup_stable_diffusion_cpp() {
+    # Check for required dependencies first
+    if ! check_dependencies "build"; then
+        print_color "RED" "Required dependencies for building are missing." "error"
+        return 1
+    fi
+
     if [ -d "stable-diffusion.cpp" ]; then
         print_color "YELLOW" "stable-diffusion.cpp directory already exists." "info"
         read -p "$(echo -e ${BOLD_CYAN}Would you like to update it? \(y/n\)${NC} )" -n 1 -r
@@ -970,7 +1029,10 @@ build_stable_diffusion_cpp() {
     echo -e "\n"
     
     if [ $build_status -ne 0 ]; then
-        print_color "RED" "Compilation failed. Check make_output.log for details." "error"
+        print_color "RED" "Compilation failed. Showing tail of make_output.log:" "error"
+        echo "------------------------------------------------------------"
+        tail -n 20 make_output.log
+        echo "------------------------------------------------------------"
         return 1
     fi
     
@@ -1026,7 +1088,12 @@ verify_python_version() {
 setup_venv() {
     print_color "PURPLE" "Setting up Python virtual environment..." "subheader"
     
-    # Check Python version
+    # Verify Python version before proceeding
+    if ! verify_python_version; then
+        print_color "RED" "Python version check failed. Cannot continue with setup." "error"
+        return 1
+    fi
+    
     local python_version=$(python3 --version 2>&1 | awk '{print $2}')
     print_color "YELLOW" "Detected Python version: $python_version" "info"
     
@@ -1742,18 +1809,25 @@ display_tui_menu() {
     
     case $choice in
         1)
-            run_with_error_handling "Installing dependencies" "" install_dependencies
-            read -p "Press Enter to continue..."
+            # Before installing dependencies, make sure we can detect system properly
+            detect_os
+            run_with_error_handling "Installing dependencies" "dependencies" install_dependencies
+            read -p "Press Enter to continue..."  # Add this back
             display_tui_menu
             ;;
         2)
-            run_with_error_handling "Setting up stable-diffusion.cpp" "" setup_stable_diffusion_cpp
-            read -p "Press Enter to continue..."
+            # Check dependencies before proceeding with build
+            run_with_error_handling "Checking build dependencies" "dependencies" check_dependencies "build"
+            run_with_error_handling "Setting up stable-diffusion.cpp" "build" setup_stable_diffusion_cpp
+            run_with_error_handling "Building stable-diffusion.cpp" "build" build_stable_diffusion_cpp
+            read -p "Press Enter to continue..."  # Add this back
             display_tui_menu
             ;;
         3)
-            run_with_error_handling "Building stable-diffusion.cpp" "" build_stable_diffusion_cpp
-            read -p "Press Enter to continue..."
+            # Check Python version and setup venv
+            run_with_error_handling "Checking Python version" "python" verify_python_version
+            run_with_error_handling "Setting up Python virtual environment" "python" setup_venv
+            read -p "Press Enter to continue..."  # Add this back
             display_tui_menu
             ;;
         4)
@@ -2736,17 +2810,18 @@ handle_interrupt() {
             if [[ $REPLY =~ ^[Yy]$ ]]; then
                 echo
                 print_color "YELLOW" "Removing incomplete download: $current_download_file" "info"
-                rm -f "$current_download_file" 
+                rm -f "$current_download_file"
                 if [ ! -f "$current_download_file" ]; then
-                    print_color "BOLD_GREEN" "✓ Partial download removed successfully" "success"
+                    print_color "BOLD_GREEN" "✓ Incomplete download file removed successfully" "success"
+                    cleaned_items+=("Incomplete download of $current_model_name")
                 else
-                    print_color "BOLD_RED" "✗ Failed to remove the partial download file" "error"
+                    print_color "BOLD_RED" "✗ Failed to remove the incomplete download file" "error"
                 fi
-                echo
             else
-                print_color "YELLOW" "Keeping partial download file." "info"
-                echo
+                print_color "YELLOW" "Keeping incomplete download file. You can try to resume the download later." "info"
             fi
+        else
+                print_color "YELLOW" "Keeping incomplete download file. You can try to resume the download later." "info"
         fi
     else
         # For other operations, just clean any temp files silently
@@ -2782,57 +2857,4 @@ trap handle_interrupt INT TERM
 display_tui_menu
 
 exit 0
-
-# Add a comprehensive dependency check function
-check_dependencies() {
-    print_color "PURPLE" "Checking for required dependencies..." "subheader"
-    
-    local missing_deps=0
-    local critical_deps=("git" "curl" "python3" "pip")
-    
-    # Check critical dependencies first
-    for dep in "${critical_deps[@]}"; do
-        echo -ne "${YELLOW}Checking for ${BOLD_WHITE}$dep${NC}... "
-        if command_exists $dep; then
-            echo -e "${BOLD_GREEN}✓${NC}"
-        else
-            echo -e "${BOLD_RED}✗${NC}"
-            print_color "RED" "Critical dependency missing: $dep" "error"
-            missing_deps=$((missing_deps + 1))
-        fi
-    done
-    
-    # Check build dependencies if we're planning to build
-    if [[ "$1" == "build" ]]; then
-        local build_deps=("cmake" "make" "g++")
-        
-        for dep in "${build_deps[@]}"; do
-            echo -ne "${YELLOW}Checking for ${BOLD_WHITE}$dep${NC}... "
-            if command_exists $dep; then
-                echo -e "${BOLD_GREEN}✓${NC}"
-            else
-                echo -e "${BOLD_RED}✗${NC}"
-                print_color "YELLOW" "Build dependency missing: $dep" "warning"
-                missing_deps=$((missing_deps + 1))
-            fi
-        done
-    fi
-    
-    if [ $missing_deps -gt 0 ]; then
-        print_color "YELLOW" "Some dependencies are missing. Would you like to install them?" "warning"
-        read -p "$(echo -e ${BOLD_YELLOW}Install missing dependencies? \(y/n\)${NC} )" -n 1 -r
-        echo
-        
-        if [[ $REPLY =~ ^[Yy]$ ]]; then
-            install_dependencies
-            return $?
-        else
-            print_color "RED" "Cannot proceed without required dependencies." "error"
-            return 1
-        fi
-    fi
-    
-    print_color "GREEN" "✓ All required dependencies are installed" "success"
-    return 0
-}
 

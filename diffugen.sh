@@ -10,7 +10,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 echo "Script directory: $SCRIPT_DIR"
 
 # Activate virtual environment
-VENV_PATH="$SCRIPT_DIR/diffugen-env"
+VENV_PATH="$SCRIPT_DIR/diffugen_env"
 echo "Activating virtual environment at: $VENV_PATH"
 
 if [ ! -d "$VENV_PATH" ]; then
