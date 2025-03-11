@@ -1184,41 +1184,176 @@ download_file() {
     current_model_name="$file_name"
     current_download_file="$dest_path"
     
-    echo -e "${BOLD_CYAN}Downloading ${WHITE}$file_name${CYAN} to ${WHITE}$dest_path${NC}"
+    # Create header for download
+    echo -e "${BOLD_PURPLE}┌────────────────────────────────────────────────────────────────────────┐"
+    echo -e "${BOLD_PURPLE}│ ${BOLD_WHITE}Downloading: ${BOLD_YELLOW}$file_name${BOLD_PURPLE}                                             "
+    echo -e "${BOLD_PURPLE}└────────────────────────────────────────────────────────────────────────┘${NC}"
     
-    # ===== REMOVE THIS LINE IF IT EXISTS =====
-    # echo -e "${BOLD_WHITE}Download Progress${NC}"
-    # echo -e "Downloading..."
-    # ===========================================
-    
-    # Create a single download progress header
-    echo -e "${BOLD_WHITE}┌────────────────────────────────────────────────────────┐"
-    echo -e "│ ${CYAN}Downloading: ${WHITE}$file_name${BOLD_WHITE}                                  "
-    echo -e "└────────────────────────────────────────────────────────┘${NC}"
-    
-    # Download with a single progress indicator
     local attempt=1
     while [ $attempt -le $retries ]; do
-        if curl -# -L -o "$dest_path" "$url"; then
-            echo -e "${BOLD_GREEN}✓ Download successful: ${WHITE}$file_name${NC}"
-            # Clear download tracking once complete
-            current_model_name=""
-            current_download_file=""
-            return 0
-        else
-            echo -e "${BOLD_YELLOW}⚠ Download attempt $attempt failed for ${WHITE}$file_name${NC}"
+        # Use a temporary file for downloading
+        local temp_file="${dest_path}.part"
+        
+        # First get file size using a HEAD request with completely silent output
+        local total_size=""
+        echo -e "${BOLD_WHITE}Fetching file size...${NC}"
+        total_size=$(curl -sI -L "$url" | grep -i "Content-Length" | tail -1 | awk '{print $2}' | tr -d '\r')
+        
+        # If we couldn't get the size, use curl's built-in progress bar
+        if [ -z "$total_size" ] || [ "$total_size" -lt 1000 ]; then
+            echo -e "${BOLD_YELLOW}Using standard progress indicator (file size unavailable)${NC}"
             
-            if [ $attempt -lt $retries ]; then
-                echo -e "${BOLD_YELLOW}Retrying in 3 seconds...${NC}"
-                sleep 3
+            if curl -L --progress-bar -o "$temp_file" "$url"; then
+                mv "$temp_file" "$dest_path"
+                echo -e "${BOLD_GREEN}✓ Download successful: ${BOLD_YELLOW}$file_name${NC}"
+                current_model_name=""
+                current_download_file=""
+                return 0
+            else
+                echo -e "${BOLD_YELLOW}⚠ Download attempt $attempt failed${NC}"
+                if [ $attempt -lt $retries ]; then
+                    echo -e "${BOLD_YELLOW}Retrying in 3 seconds...${NC}"
+                    sleep 3
+                fi
+                attempt=$((attempt + 1))
+                rm -f "$temp_file" 2>/dev/null
+            fi
+        else
+            # Display file size in human-readable format
+            if [ "$total_size" -ge 1073741824 ]; then # 1 GB or more
+                echo -e "${BOLD_WHITE}Total size: ${BOLD_CYAN}$(echo "scale=2; $total_size/1073741824" | bc) GB${NC}"
+            elif [ "$total_size" -ge 1048576 ]; then # 1 MB or more
+                echo -e "${BOLD_WHITE}Total size: ${BOLD_CYAN}$(echo "scale=2; $total_size/1048576" | bc) MB${NC}"
+            else
+                echo -e "${BOLD_WHITE}Total size: ${BOLD_CYAN}$(echo "scale=2; $total_size/1024" | bc) KB${NC}"
             fi
             
-            attempt=$((attempt + 1))
+            echo -e "${BOLD_WHITE}Starting download...${NC}"
+            
+            # Start download in background with completely silent curl
+            curl -s -L -o "$temp_file" "$url" &
+            local curl_pid=$!
+            
+            # Initialize variables for progress tracking
+            local bar_width=50
+            local start_time=$(date +%s)
+            local last_update=0
+            local last_size=0
+            
+            # Progress display loop
+            while kill -0 $curl_pid 2>/dev/null; do
+                if [ -f "$temp_file" ]; then
+                    # Only update display every 1 second to avoid flickering
+                    local current_time=$(date +%s)
+                    if (( current_time - last_update >= 1 )); then
+                        last_update=$current_time
+                        
+                        # Get current size and calculate percentage
+                        local current_size=$(stat -c %s "$temp_file" 2>/dev/null || stat -f %z "$temp_file" 2>/dev/null)
+                        local percent=0
+                        if [ "$current_size" -gt 0 ] && [ "$total_size" -gt 0 ]; then
+                            percent=$(( (current_size * 100) / total_size ))
+                            if [ "$percent" -gt 100 ]; then percent=100; fi
+                        fi
+                        
+                        # Calculate progress bar visuals
+                        local completed=$(( (bar_width * percent) / 100 ))
+                        local remaining=$(( bar_width - completed ))
+                        
+                        # Calculate download speed (once per second)
+                        local speed_text=""
+                        local eta_text=""
+                        
+                        local elapsed=$(( current_time - start_time ))
+                        if [ $elapsed -gt 0 ] && [ $current_size -gt 0 ]; then
+                            local bytes_per_sec=$(( current_size / elapsed ))
+                            
+                            # Only show reasonable speeds
+                            if [ $bytes_per_sec -gt 0 ]; then
+                                # Format speed text
+                                if [ $bytes_per_sec -ge 1048576 ]; then
+                                    speed_text="$(echo "scale=1; $bytes_per_sec/1048576" | bc) MB/s"
+                                else
+                                    speed_text="$(echo "scale=1; $bytes_per_sec/1024" | bc) KB/s"
+                                fi
+                                
+                                # Calculate and format ETA
+                                local remaining_bytes=$(( total_size - current_size ))
+                                local eta_seconds=$(( remaining_bytes / bytes_per_sec ))
+                                
+                                if [ $eta_seconds -ge 3600 ]; then
+                                    eta_text="$(( eta_seconds / 3600 ))h $(( (eta_seconds % 3600) / 60 ))m"
+                                elif [ $eta_seconds -ge 60 ]; then
+                                    eta_text="$(( eta_seconds / 60 ))m"
+                                else
+                                    eta_text="${eta_seconds}s"
+                                fi
+                            fi
+                        fi
+                        
+                        # Clear the entire line before printing new content
+                        printf "\r\033[K"
+                        
+                        # Print progress bar on a single line
+                        echo -ne "${BOLD_PURPLE}["
+                        # Draw the filled portion
+                        for ((i=0; i<completed; i++)); do
+                            echo -ne "${BOLD_PURPLE}█"
+                        done
+                        
+                        # Draw the current position marker
+                        if [ $completed -lt $bar_width ]; then
+                            echo -ne "${BOLD_YELLOW}>"
+                            
+                            # Draw the empty portion
+                            for ((i=0; i<remaining-1; i++)); do
+                                echo -ne " "
+                            done
+                        fi
+                        
+                        # Print percentage and speed
+                        echo -ne "${BOLD_PURPLE}] ${BOLD_WHITE}${percent}%"
+                        
+                        if [ -n "$speed_text" ]; then
+                            echo -ne " ${BOLD_WHITE}| ${BOLD_CYAN}$speed_text"
+                        fi
+                        
+                        if [ -n "$eta_text" ]; then
+                            echo -ne " ${BOLD_WHITE}| ${BOLD_GREEN}ETA: $eta_text"
+                        fi
+                    fi
+                fi
+                
+                # Sleep to reduce CPU usage
+                sleep 0.5
+            done
+            
+            # Clear the line and move to next line when download completes
+            printf "\r\033[K"
+            
+            # Verify download success
+            wait $curl_pid
+            local curl_status=$?
+            
+            if [ $curl_status -eq 0 ] && [ -f "$temp_file" ]; then
+                mv "$temp_file" "$dest_path"
+                echo -e "${BOLD_GREEN}✓ Download successful: ${BOLD_YELLOW}$file_name${NC}"
+                current_model_name=""
+                current_download_file=""
+                return 0
+            else
+                echo -e "${BOLD_YELLOW}⚠ Download attempt $attempt failed${NC}"
+                if [ $attempt -lt $retries ]; then
+                    echo -e "${BOLD_YELLOW}Retrying in 3 seconds...${NC}"
+                    sleep 3
+                fi
+                attempt=$((attempt + 1))
+                rm -f "$temp_file" 2>/dev/null
+            fi
         fi
     done
     
-    echo -e "${BOLD_RED}✗ Download failed after $retries attempts for ${WHITE}$file_name${NC}"
-    # Clear download tracking on failure
+    echo -e "${BOLD_RED}✗ Download failed after $retries attempts for ${BOLD_YELLOW}$file_name${NC}"
     current_model_name=""
     current_download_file=""
     return 1
@@ -1432,10 +1567,10 @@ model_selection_menu() {
         fi
         
         # Create fancy download indicator with divider to separate from previous output
-        echo -e "${BOLD_WHITE}────────────────────────────────────────────────────────────────${NC}"
-        echo -e "${BOLD_BLUE}┌─────────────────────────────────────────────────────────┐"
-        echo -e "│ ${WHITE}Downloading: ${BOLD_CYAN}$name${BOLD_BLUE}                                     "
-        echo -e "└─────────────────────────────────────────────────────────┘${NC}"
+        echo -e "${BOLD_WHITE}────────────────────────────────────────────────────────────────────────${NC}"
+        echo -e "${BOLD_PURPLE}┌─────────────────────────────────────────────────────────┐"
+        echo -e "${BOLD_PURPLE}│ ${BOLD_WHITE}Downloading: ${BOLD_YELLOW}$name${BOLD_PURPLE}                                     "
+        echo -e "${BOLD_PURPLE}└─────────────────────────────────────────────────────────┘${NC}"
         
         # Add estimation of file size if available in the model description
         if [[ $name == "sd15" ]]; then
