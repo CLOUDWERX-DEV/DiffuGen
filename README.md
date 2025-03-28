@@ -13,7 +13,7 @@
   <a href="https://github.com/CLOUDWERX-DEV/diffugen/network/members"><img src="https://img.shields.io/github/forks/CLOUDWERX-DEV/diffugen" alt="Forks Badge"/></a>
   <a href="https://github.com/CLOUDWERX-DEV/diffugen/issues"><img src="https://img.shields.io/github/issues/CLOUDWERX-DEV/diffugen" alt="Issues Badge"/></a>
   <a href="https://github.com/CLOUDWERX-DEV/diffugen/blob/master/LICENSE"><img src="https://img.shields.io/github/license/CLOUDWERX-DEV/diffugen" alt="License Badge"/></a>
-</p>
+  <a href="https://smithery.ai/server/CLOUDWERX-DEV/DiffuGen"><img alt="Installations" src="https://smithery.duckduckgoose.cc/badge/CLOUDWERX-DEV/DiffuGen"></a>
 
 ## 📋 Table of Contents
 
@@ -21,6 +21,7 @@
 - [Features](#-features)
 - [System Requirements](#-system-requirements)
 - [Installation](#-installation)
+  - [Installing via Smithery](#installing-via-smithery)
   - [Automatic Installation](#automatic-installation)
   - [Manual Installation](#manual-installation)
   - [Cross-Platform Considerations](#cross-platform-considerations)
@@ -138,6 +139,14 @@ Built on top of the highly optimized [stable-diffusion.cpp](https://github.com/l
 For troubleshooting dependency issues, consult the [DiffuGen GitHub repository](https://github.com/cloudwerxlab/diffugen) or the [official documentation](https://github.com/leejet/stable-diffusion.cpp) for stable-diffusion.cpp.
 
 ## 📥 Installation
+
+### Installing via Smithery
+
+To install DiffuGen automatically for Claude Desktop via Smithery:
+
+```bash
+smithery install CLOUDWERX-DEV/DiffuGen
+```
 
 ### Automatic Installation
 
