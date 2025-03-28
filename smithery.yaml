@@ -1,0 +1,20 @@
+# Smithery configuration file: https://smithery.ai/docs/config#smitheryyaml
+
+startCommand:
+  type: stdio
+  configSchema:
+    # JSON Schema defining the configuration options for the MCP.
+    type: object
+    properties: {}
+    default: {}
+    description: No configuration required for DiffuGen server. All parameters are
+      set via environment variables or default values.
+  commandFunction:
+    # A JS function that produces the CLI command based on the given config to start the MCP on stdio.
+    |-
+    (config) => ({
+      command: 'bash',
+      args: ['diffugen.sh'],
+      env: { }
+    })
+  exampleConfig: {}
