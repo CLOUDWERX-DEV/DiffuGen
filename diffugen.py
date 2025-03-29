@@ -166,10 +166,9 @@ logging.debug(f"Default output directory: {default_output_dir}")
 # Define model paths based on the SD_CPP_PATH
 MODEL_PATHS = {
     "flux-schnell": f"{sd_cpp_path}/models/flux/flux-1-schnell.Q8_0.gguf",
-    "flux-dev": f"{sd_cpp_path}/models/flux/flux-dev.Q8_0.gguf",
+    "flux-dev": f"{sd_cpp_path}/models/flux/flux1-dev-Q8_0.gguf",
     "sdxl": f"{sd_cpp_path}/models/sdxl-1.0-base.safetensors",
     "sd3": f"{sd_cpp_path}/models/sd3-medium.safetensors",
-    "sd15": f"{sd_cpp_path}/models/v1-5-pruned-emaonly.safetensors"
 }
 
 # Define supporting files
@@ -181,16 +180,17 @@ SUPPORTING_FILES = {
 }
 
 @mcp.tool()
-def generate_stable_diffusion_image(prompt: str, model: str = "flux-schnell", output_dir: str = None, 
+def generate_stable_diffusion_image(prompt: str, model: str = "sd15", output_dir: str = None, 
                                    width: int = 512, height: int = 512, steps: int = 20, 
                                    cfg_scale: float = 7.0, seed: int = -1, 
                                    sampling_method: str = "euler_a", negative_prompt: str = "") -> dict:
     """
-    Generate an image using various Stable Diffusion models.
+    Generate an image using standard Stable Diffusion models (NOT Flux).
+    For Flux models (flux-schnell, flux-dev), use generate_flux_image instead.
     
     Args:
         prompt: The image description to generate
-        model: Model to use (flux-schnell, flux-dev, sdxl, sd3, sd15)
+        model: Model to use (sdxl, sd3, sd15 only - NOT flux models)
         output_dir: Directory to save the image (defaults to current directory)
         width: Image width in pixels
         height: Image height in pixels
@@ -203,6 +203,13 @@ def generate_stable_diffusion_image(prompt: str, model: str = "flux-schnell", ou
     Returns:
         A dictionary containing the path to the generated image and the command used
     """
+    # Validate that flux models are not used with this tool
+    if model.lower().startswith("flux-"):
+        return {
+            "success": False,
+            "error": f"Model {model} is a Flux model. Use generate_flux_image for Flux models."
+        }
+        
     # Sanitize the prompt to avoid command injection
     sanitized_prompt = re.sub(r'[^\w\s\-\.,;:!?()]', '', prompt)
     sanitized_negative = re.sub(r'[^\w\s\-\.,;:!?()]', '', negative_prompt) if negative_prompt else ""
@@ -243,21 +250,7 @@ def generate_stable_diffusion_image(prompt: str, model: str = "flux-schnell", ou
         base_command.extend(["-n", sanitized_negative])
     
     # Add model-specific arguments
-    if model.lower() == "flux-schnell":
-        base_command.extend([
-            "--diffusion-model", MODEL_PATHS["flux-schnell"],
-            "--vae", SUPPORTING_FILES["vae"],
-            "--clip_l", SUPPORTING_FILES["clip_l"],
-            "--t5xxl", SUPPORTING_FILES["t5xxl"]
-        ])
-    elif model.lower() == "flux-dev":
-        base_command.extend([
-            "--diffusion-model", MODEL_PATHS["flux-dev"],
-            "--vae", SUPPORTING_FILES["vae"],
-            "--clip_l", SUPPORTING_FILES["clip_l"],
-            "--t5xxl", SUPPORTING_FILES["t5xxl"]
-        ])
-    elif model.lower() == "sdxl":
+    if model.lower() == "sdxl":
         base_command.extend([
             "-m", MODEL_PATHS["sdxl"],
             "--vae", SUPPORTING_FILES["sdxl_vae"]
@@ -271,13 +264,11 @@ def generate_stable_diffusion_image(prompt: str, model: str = "flux-schnell", ou
             "-m", MODEL_PATHS["sd15"]
         ])
     else:
-        # Default to Flux Schnell if model not recognized
+        # Default to SD15 if model not recognized
         base_command.extend([
-            "--diffusion-model", MODEL_PATHS["flux-schnell"],
-            "--vae", SUPPORTING_FILES["vae"],
-            "--clip_l", SUPPORTING_FILES["clip_l"],
-            "--t5xxl", SUPPORTING_FILES["t5xxl"]
+            "-m", MODEL_PATHS["sd15"]
         ])
+        logging.warning(f"Unrecognized model {model}, defaulting to sd15")
     
     # Detect platform and adjust paths if needed
     if os.name == 'nt':  # Windows
@@ -320,36 +311,128 @@ def generate_stable_diffusion_image(prompt: str, model: str = "flux-schnell", ou
             "command": " ".join(base_command)
         }
 
-# Keep the original function for backward compatibility
 @mcp.tool()
 def generate_flux_image(prompt: str, output_dir: str = None, cfg_scale: float = 1.0, 
-                        sampling_method: str = "euler", steps: int = 4) -> dict:
+                        sampling_method: str = "euler", steps: int = 4,
+                        model: str = "flux-schnell", width: int = 512, 
+                        height: int = 512, seed: int = -1) -> dict:
     """
-    Generate an image using Flux stable diffusion model.
+    Generate an image using Flux stable diffusion models ONLY.
+    Use this tool for any request involving flux-schnell or flux-dev models.
     
     Args:
         prompt: The image description to generate
+        model: Flux model to use (only "flux-schnell" or "flux-dev" are supported)
         output_dir: Directory to save the image (defaults to current directory)
         cfg_scale: CFG scale parameter (default: 1.0)
         sampling_method: Sampling method to use (default: euler)
         steps: Number of diffusion steps (default: 4)
+        width: Image width in pixels (default: 512)
+        height: Image height in pixels (default: 512)
+        seed: Seed for reproducibility (-1 for random)
         
     Returns:
         A dictionary containing the path to the generated image and the command used
     """
+    # Validate that only flux models are used with this tool
+    if model.lower() not in ["flux-schnell", "flux-dev"]:
+        return {
+            "success": False,
+            "error": f"Model {model} is not a Flux model. Only flux-schnell and flux-dev are supported by this tool."
+        }
+    
     # If output_dir is None, use the default_output_dir
     if output_dir is None:
         output_dir = default_output_dir
         logging.debug(f"Using default output directory: {default_output_dir}")
         
-    return generate_stable_diffusion_image(
-        prompt=prompt,
-        model="flux-schnell",
-        output_dir=output_dir,
-        cfg_scale=cfg_scale,
-        sampling_method=sampling_method,
-        steps=steps
-    )
+    # Sanitize the prompt to avoid command injection
+    sanitized_prompt = re.sub(r'[^\w\s\-\.,;:!?()]', '', prompt)
+    
+    # Generate a unique filename for the output
+    image_id = str(uuid.uuid4())[:8]
+    safe_name = re.sub(r'\W+', '_', sanitized_prompt)[:30]
+    filename = f"{model}_{safe_name}_{image_id}.png"
+    
+    # Determine output directory
+    os.makedirs(output_dir, exist_ok=True)
+    output_path = os.path.join(output_dir, filename)
+    
+    # Log the SD_CPP_PATH for debugging
+    logging.debug(f"Using SD_CPP_PATH: {sd_cpp_path}")
+    
+    # Base command with common arguments
+    base_command = [
+        f"{sd_cpp_path}/build/bin/sd",
+        "-p", sanitized_prompt,
+        "--cfg-scale", str(cfg_scale),
+        "--sampling-method", sampling_method,
+        "--steps", str(steps),
+        "-H", str(height),
+        "-W", str(width),
+        "-o", output_path,
+        "--diffusion-fa"
+    ]
+    
+    # Add seed if specified
+    if seed >= 0:
+        base_command.extend(["--seed", str(seed)])
+    
+    # Add model-specific arguments
+    if model.lower() == "flux-schnell":
+        base_command.extend([
+            "--diffusion-model", MODEL_PATHS["flux-schnell"],
+            "--vae", SUPPORTING_FILES["vae"],
+            "--clip_l", SUPPORTING_FILES["clip_l"],
+            "--t5xxl", SUPPORTING_FILES["t5xxl"]
+        ])
+    elif model.lower() == "flux-dev":
+        base_command.extend([
+            "--diffusion-model", MODEL_PATHS["flux-dev"],
+            "--vae", SUPPORTING_FILES["vae"],
+            "--clip_l", SUPPORTING_FILES["clip_l"],
+            "--t5xxl", SUPPORTING_FILES["t5xxl"]
+        ])
+    
+    # Detect platform and adjust paths if needed
+    if os.name == 'nt':  # Windows
+        base_command[0] = base_command[0].replace('/', '\\')
+        for i in range(len(base_command)):
+            if isinstance(base_command[i], str):
+                base_command[i] = base_command[i].replace('/', '\\')
+    
+    try:
+        # Execute the command
+        result = subprocess.run(
+            base_command,
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+        
+        return {
+            "success": True,
+            "image_path": output_path,
+            "prompt": sanitized_prompt,
+            "model": model,
+            "width": width,
+            "height": height,
+            "steps": steps,
+            "cfg_scale": cfg_scale,
+            "seed": seed,
+            "sampling_method": sampling_method,
+            "command": " ".join(base_command),
+            "output": result.stdout
+        }
+        
+    except subprocess.CalledProcessError as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "stderr": e.stderr,
+            "command": " ".join(base_command)
+        }
 
 if __name__ == "__main__":
     logging.debug("Starting MCP server with mcp.run()")
