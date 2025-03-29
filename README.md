@@ -231,7 +231,7 @@ sd_cpp_path = os.path.normpath("/full/path/to/diffugen/stable-diffusion.cpp")
 {
   "mcpServers": {
     "diffugen": {
-      "command": "./diffugen.sh",
+      "command": "/path/to/diffugen.sh",
       "args": [],
       "env": {
         "CUDA_VISIBLE_DEVICES": "0",

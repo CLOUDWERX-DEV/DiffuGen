@@ -1,15 +1,15 @@
 {
   "mcpServers": {
     "diffugen": {
-      "command": "./diffugen.sh",
+      "command": "/path/to/diffugen.sh",
       "args": [],
       "env": {
         "CUDA_VISIBLE_DEVICES": "0",
-        "SD_CPP_PATH": "/home/cloudwerxlab/Desktop/Servers/MCP/Tools/DiffuGen/stable-diffusion.cpp"
+        "SD_CPP_PATH": "/path/to/stable-diffusion.cpp"
       },
       "resources": {
-        "models_dir": "/home/cloudwerxlab/Desktop/Servers/MCP/Tools/DiffuGen/stable-diffusion.cpp/models",
-        "output_dir": "/home/cloudwerxlab/Desktop/Servers/MCP/Tools/DiffuGen/outputs",
+        "models_dir": "/path/to/stable-diffusion.cpp/models",
+        "output_dir": "/path/to/outputs",
         "vram_usage": "adaptive"
       },
       "metadata": {
