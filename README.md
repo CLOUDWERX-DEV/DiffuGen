@@ -331,6 +331,22 @@ Each model has specific default parameters optimized for best results:
 | sd3 | 20 | 7.0 | Latest generation with good quality |
 | sd15 | 20 | 7.0 | Classic baseline model |
 
+These default parameters can be customized in your `diffugen.json` configuration file:
+
+```json
+"default_params": {
+  "steps": {
+    "flux-schnell": 12,  // Customize steps for better quality
+    "sdxl": 30           // Increase steps for more detailed SDXL images
+  },
+  "cfg_scale": {
+    "sd15": 9.0          // Higher cfg_scale for stronger prompt adherence
+  }
+}
+```
+
+You only need to specify the parameters you want to override - any unspecified values will use the built-in defaults.
+
 ### Asking a LLM to Generate Images
 
 Here are examples of how to ask an AI assistant to generate images with DiffuGen:
@@ -405,11 +421,22 @@ DiffuGen can be configured via the `diffugen.json` file in the root directory:
 | `sd_cpp_path` | Path to stable-diffusion.cpp directory | Required |
 | `models_dir` | Path to models directory | `${sd_cpp_path}/models` |
 | `output_dir` | Path where generated images are saved | `./outputs` |
-| `default_model` | Default model to use when not specified | `flux-schnell` |
+| `default_model` | Default model to use when not specified | (Optional) |
 | `vram_usage` | VRAM usage policy | `adaptive` |
 | `gpu_layers` | Number of layers to offload to GPU (-1 for auto) | `-1` |
 | `default_params` | Default parameters for image generation | See above |
 
+### Configuration Hierarchy
+
+DiffuGen uses a multi-layered configuration approach:
+
+1. **Hardcoded Defaults**: Basic fallback values if nothing else is specified
+2. **Environment Variables**: Variables like `SD_CPP_PATH` and `DIFFUGEN_OUTPUT_DIR`
+3. **diffugen.json**: Dedicated configuration file in the DiffuGen root directory
+4. **MCP Configuration**: Settings in the MCP JSON file (e.g., `~/.cursor/mcp.json`)
+5. **Command Line Parameters**: Highest priority, overrides all other settings
+
+This hierarchy allows flexible configuration for different deployment scenarios. For example, you could have standard settings in `diffugen.json` but override them for specific IDEs in the MCP configuration.
 
 ### Parameter Reference
 
@@ -428,6 +455,11 @@ DiffuGen can be configured via the `diffugen.json` file in the root directory:
 ## 🖥️ Command Line Usage
 
 DiffuGen can be used directly from the command line to generate images without needing to interact with an MCP client. This is useful for scripting, batch processing, or when you want to quickly generate images without opening an IDE.
+
+The command line interface respects the configuration hierarchy, meaning:
+- Default values come from your configuration (diffugen.json, MCP JSON)
+- Command line parameters override any configured defaults
+- Model-specific parameters (steps, cfg_scale) are determined based on the selected model
 
 ### Basic Command Line Syntax
 
@@ -530,13 +562,15 @@ For best results when using specific models via command line:
 
 ### Default Parameter Changes
 
-The command-line interface of DiffuGen has been optimized with sensible defaults:
+The command-line interface of DiffuGen uses the following defaults if not otherwise specified in configuration:
 
-- Default Model: `flux-schnell` (fastest model)
+- Default Model: If not specified, function-appropriate models are used (flux-schnell for Flux functions, sd15 for SD functions)
 - Default Sampling Method: `euler` (best for Flux models)
-- Default CFG Scale: `1.0` (optimal for Flux models)
+- Default CFG Scale: `1.0` for Flux models, `7.0` for standard SD models
 - Default Steps: `8` for flux-schnell, `20` for other models
 - Default Dimensions: 512x512 pixels
+
+When using the command line, you don't need to specify these parameters unless you want to override the defaults. If you frequently use specific parameters, consider adding them to your configuration file rather than specifying them on each command line.
 
 ### Command Line Usage Notes
 
