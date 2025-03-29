@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <em>Seamlessly generate AI images directly within your development workflow. Integrates with Cursor, Windsurf, Roo Code, Cline and other MCP-compatible IDEs for frictionless creative development.</em>
+  <em>Your AI art studio embedded directly in code. Generate, iterate, and perfect visual concepts through this powerful MCP server for Cursor, Windsurf, and other compatible IDEs, utilizing cutting-edge Flux and Stable Diffusion models without disrupting your development process.</em>
 </p>
 
 <p align="center">
@@ -27,15 +27,16 @@
   - [Default Parameters by Model](#default-parameters-by-model)
   - [Asking a LLM to Generate Images](#asking-a-llm-to-generate-images)
   - [Parameter Reference](#parameter-reference)
-- [Command Line Usage](#-command-line-usage)
-  - [Basic Command Line Syntax](#basic-command-line-syntax)
-  - [Command Line Parameters](#command-line-parameters)
-  - [Command Line Examples](#command-line-examples)
   - [Model-Specific Parameter Recommendations](#model-specific-parameter-recommendations)
   - [Default Parameter Changes](#default-parameter-changes)
   - [Command Line Usage Notes](#command-line-usage-notes)
-- [Configuration](#-configuration)
-- [Troubleshooting](#-troubleshooting)
+- [Configuration](#️-configuration)
+  - [MCP Configuration File Structure](#mcp-configuration-file-structure)
+  - [Key Configuration Elements](#key-configuration-elements)
+  - [IDE-Specific Options](#ide-specific-options)
+  - [Configuration File Locations](#configuration-file-locations)
+  - [Customizing Default Parameters](#customizing-default-parameters)
+  - [Updating Configuration Files](#updating-configuration-files)
 - [Advanced Usage](#-advanced-usage)
 - [License](#-license)
 - [Acknowledgments](#-acknowledgments)
@@ -68,7 +69,7 @@ DiffuGen consists of several key components:
 - **setup-diffugen.sh**: The complete install utility and model downloader and manager
 - **diffugen.py**: The core Python script that implements the MCP server functionality and defines the generation tools
 - **diffugen.sh**: A shell script launcher that sets up the environment and launches the Python server
-- **diffugen.json**: Configuration file for MCP integration with various IDEs
+- **diffugen.json**: Template configuration file for MCP integration with various IDEs (to be copied into IDE's MCP configuration)
 - **stable-diffusion.cpp**: The optimized C++ implementation of Stable Diffusion used for actual image generation
 
 The system works by:
@@ -231,21 +232,21 @@ sd_cpp_path = os.path.normpath("/full/path/to/diffugen/stable-diffusion.cpp")
 {
   "mcpServers": {
     "diffugen": {
-      "command": "/path/to/diffugen.sh",
+      "command": "path/to/diffugen.sh",
       "args": [],
       "env": {
         "CUDA_VISIBLE_DEVICES": "0",
-        "SD_CPP_PATH": "/path/to/stable-diffusion.cpp"
+        "SD_CPP_PATH": "path/to/stable-diffusion.cpp"
       },
       "resources": {
-        "models_dir": "/path/to/stable-diffusion.cpp/models",
-        "output_dir": "/path/to/outputs",
+        "models_dir": "path/to/stable-diffusion.cpp/models",
+        "output_dir": "path/to/outputs",
         "vram_usage": "adaptive"
       },
       "metadata": {
         "name": "DiffuGen",
         "version": "1.0",
-        "description": "Powerful image generation system leveraging multiple Stable Diffusion models (flux-schnell, flux-dev, sdxl, sd3, sd15). DiffuGen provides optimized performance with cross-platform compatibility and advanced parameter control for creating high-quality AI-generated images with precise customization. Supports various sampling methods and negative prompting for fine-tuned creative control.",
+        "description": "Your AI art studio embedded directly in code. Generate, iterate, and perfect visual concepts through this powerful MCP server for Cursor, Windsurf, and other compatible IDEs, utilizing cutting-edge Flux and Stable Diffusion models without disrupting your development process.",
         "author": "CLOUDWERX LAB",
         "homepage": "https://github.com/CLOUDWERX-DEV/diffugen",
         "usage": "Generate images using two primary methods:\n1. Standard generation: 'generate an image of [description]' with optional parameters:\n   - model: Choose from flux-schnell (default), flux-dev, sdxl, sd3, sd15\n   - dimensions: width and height (default: 512x512)\n   - steps: Number of diffusion steps (default: 20, lower for faster generation)\n   - cfg_scale: Guidance scale (default: 7.0, lower for more creative freedom)\n   - seed: For reproducible results (-1 for random)\n   - sampling_method: euler, euler_a (default), heun, dpm2, dpm++2s_a, dpm++2m, dpm++2mv2, lcm\n   - negative_prompt: Specify elements to avoid in the image\n2. Quick Flux generation: 'generate a flux image of [description]' for faster results with fewer steps (default: 4)"
@@ -260,6 +261,29 @@ sd_cpp_path = os.path.normpath("/full/path/to/diffugen/stable-diffusion.cpp")
         "displayName": "DiffuGen",
         "icon": "🖼️",
         "category": "Creative Tools"
+      },
+      "default_params": {
+        "steps": {
+          "flux-schnell": 8,
+          "flux-dev": 20,
+          "sdxl": 20,
+          "sd3": 20,
+          "sd15": 20
+        },
+        "cfg_scale": {
+          "flux-schnell": 1.0,
+          "flux-dev": 1.0,
+          "sdxl": 7.0,
+          "sd3": 7.0, 
+          "sd15": 7.0
+        },
+        "sampling_method": {
+          "flux-schnell": "euler",
+          "flux-dev": "euler",
+          "sdxl": "euler",
+          "sd3": "euler",
+          "sd15": "euler"
+        }
       }
     }
   }
@@ -331,7 +355,7 @@ Each model has specific default parameters optimized for best results:
 | sd3 | 20 | 7.0 | Latest generation with good quality |
 | sd15 | 20 | 7.0 | Classic baseline model |
 
-These default parameters can be customized in your `diffugen.json` configuration file:
+These default parameters can be customized by adding a `default_params` section to your IDE's MCP configuration file:
 
 ```json
 "default_params": {
@@ -346,6 +370,8 @@ These default parameters can be customized in your `diffugen.json` configuration
 ```
 
 You only need to specify the parameters you want to override - any unspecified values will use the built-in defaults.
+
+> **Note**: For model-specific command line examples and recommendations, see [Model-Specific Parameter Recommendations](#model-specific-parameter-recommendations) section.
 
 ### Asking a LLM to Generate Images
 
@@ -380,149 +406,46 @@ Generate an image of a cyberpunk street scene, model=flux-dev, width=768, height
 ```
 Create an illustration of a fantasy character with model=sd15, width=512, height=768, steps=30, cfg_scale=7.5, sampling_method=dpm++2m, negative_prompt=blurry, low quality, distorted
 ```
-## 📝 Configuration
-
-DiffuGen can be configured via the `diffugen.json` file in the root directory:
-
-```json
-{
-  "sd_cpp_path": "/path/to/stable-diffusion.cpp",
-  "models_dir": "/path/to/stable-diffusion.cpp/models",
-  "output_dir": "/path/to/outputs",
-  "default_model": "flux-schnell",
-  "vram_usage": "adaptive",
-  "gpu_layers": -1,
-  "default_params": {
-    "width": 512,
-    "height": 512,
-    "steps": {
-      "flux-schnell": 8,
-      "flux-dev": 20,
-      "sdxl": 20,
-      "sd3": 20,
-      "sd15": 20
-    },
-    "cfg_scale": {
-      "flux-schnell": 1.0,
-      "flux-dev": 1.0,
-      "sdxl": 7.0,
-      "sd3": 7.0,
-      "sd15": 7.0
-    },
-    "sampling_method": "euler"
-  }
-}
-```
-
-### Configuration Options
-
-| Option | Description | Default |
-|--------|-------------|---------|
-| `sd_cpp_path` | Path to stable-diffusion.cpp directory | Required |
-| `models_dir` | Path to models directory | `${sd_cpp_path}/models` |
-| `output_dir` | Path where generated images are saved | `./outputs` |
-| `default_model` | Default model to use when not specified | (Optional) |
-| `vram_usage` | VRAM usage policy | `adaptive` |
-| `gpu_layers` | Number of layers to offload to GPU (-1 for auto) | `-1` |
-| `default_params` | Default parameters for image generation | See above |
-
-### Configuration Hierarchy
-
-DiffuGen uses a multi-layered configuration approach:
-
-1. **Hardcoded Defaults**: Basic fallback values if nothing else is specified
-2. **Environment Variables**: Variables like `SD_CPP_PATH` and `DIFFUGEN_OUTPUT_DIR`
-3. **diffugen.json**: Dedicated configuration file in the DiffuGen root directory
-4. **MCP Configuration**: Settings in the MCP JSON file (e.g., `~/.cursor/mcp.json`)
-5. **Command Line Parameters**: Highest priority, overrides all other settings
-
-This hierarchy allows flexible configuration for different deployment scenarios. For example, you could have standard settings in `diffugen.json` but override them for specific IDEs in the MCP configuration.
 
 ### Parameter Reference
 
-| Parameter | Description | Default | Valid Values |
-|-----------|-------------|---------|-------------|
-| `prompt` | The image description | (Required) | Any text |
-| `model` | Model to use | `flux-schnell` | `flux-schnell`, `flux-dev`, `sdxl`, `sd3`, `sd15` |
-| `width` | Image width in pixels | 512 | 64-2048 |
-| `height` | Image height in pixels | 512 | 64-2048 |
-| `steps` | Number of diffusion steps | Model-specific | 1-100 |
-| `cfg_scale` | CFG scale parameter | Model-specific | 0-20 |
-| `seed` | Seed for reproducibility | -1 (random) | Any integer, -1 for random |
-| `sampling_method` | Sampling method | `euler` | `euler`, `euler_a`, `heun`, `dpm2`, `dpm++2s_a`, `dpm++2m`, `dpm++2mv2`, `lcm` |
-| `negative_prompt` | Elements to avoid | `""` | Any text |
-
-## 🖥️ Command Line Usage
-
-DiffuGen can be used directly from the command line to generate images without needing to interact with an MCP client. This is useful for scripting, batch processing, or when you want to quickly generate images without opening an IDE.
-
-The command line interface respects the configuration hierarchy, meaning:
-- Default values come from your configuration (diffugen.json, MCP JSON)
-- Command line parameters override any configured defaults
-- Model-specific parameters (steps, cfg_scale) are determined based on the selected model
-
-### Basic Command Line Syntax
-
-The basic syntax for generating images from the command line is:
+DiffuGen can be used from the command line with the following basic syntax:
 
 ```bash
 ./diffugen.sh "Your prompt here" [options]
 ```
 
-For example:
+Example:
 ```bash
 ./diffugen.sh "A futuristic cityscape with flying cars"
 ```
 
-This will generate an image using the default parameters (flux-schnell model, 512x512 resolution, etc.) and save it to the configured output directory.
+This command generates an image using default parameters (flux-schnell model, 512x512 resolution, etc.) and saves it to the configured output directory.
 
-### Command Line Parameters
+Below are the parameters that can be used with DiffuGen (applicable to both MCP interface and command line):
 
-All the parameters available in the MCP interface can also be specified on the command line:
+| Parameter | Description | Default | Valid Values | Command Line Flag |
+|-----------|-------------|---------|-------------|-------------------|
+| model | The model to use for generation | flux-schnell/sd15 | flux-schnell, flux-dev, sdxl, sd3, sd15 | --model |
+| width | Image width in pixels | 512 | 256-2048 | --width |
+| height | Image height in pixels | 512 | 256-2048 | --height |
+| steps | Number of diffusion steps | model-specific | 1-100 | --steps |
+| cfg_scale | Classifier-free guidance scale | model-specific | 0.1-30.0 | --cfg-scale |
+| seed | Random seed for reproducibility | -1 (random) | -1 or any integer | --seed |
+| sampling_method | Diffusion sampling method | euler | euler, euler_a, heun, dpm2, dpm++2s_a, dpm++2m, dpm++2mv2, lcm | --sampling-method |
+| negative_prompt | Elements to avoid in the image | "" (empty) | Any text string | --negative-prompt |
+| output_dir | Directory to save images | Config-defined | Valid path | --output-dir |
 
-| Parameter | Command Line Flag | Example |
-|-----------|------------------|---------|
-| Model | `--model` | `--model sdxl` |
-| Width | `--width` | `--width 1024` |
-| Height | `--height` | `--height 768` |
-| Steps | `--steps` | `--steps 30` |
-| CFG Scale | `--cfg-scale` | `--cfg-scale 7.0` |
-| Seed | `--seed` | `--seed 42` |
-| Sampling Method | `--sampling-method` | `--sampling-method dpm++2m` |
-| Negative Prompt | `--negative-prompt` | `--negative-prompt "blurry, low quality"` |
-| Output Directory | `--output-dir` | `--output-dir "./my_images"` |
+These parameters can be specified when asking an AI assistant to generate images or when using the command line interface. Parameters are passed in different formats depending on the interface:
 
-### Command Line Examples
+- **In MCP/AI Assistant**: `parameter=value` (e.g., `model=sdxl, width=768, height=512`)
+- **In Command Line**: `--parameter value` (e.g., `--model sdxl --width 768 --height 512`)
 
-#### Generate an image with default settings:
-```bash
-./diffugen.sh "A beautiful mountain landscape"
-```
-
-#### Generate an image with a specific model:
-```bash
-./diffugen.sh "A medieval castle with dragons" --model sdxl
-```
-
-#### Generate with custom dimensions:
-```bash
-./diffugen.sh "A portrait of a cyberpunk character" --width 768 --height 1024
-```
-
-#### Generate with full parameter control:
-```bash
-./diffugen.sh "A steampunk airship floating above Victorian London" \
-  --model sd15 \
-  --width 1024 \
-  --height 512 \
-  --steps 30 \
-  --cfg-scale 7.5 \
-  --sampling-method dpm++2m \
-  --seed 12345 \
-  --negative-prompt "blurry, low quality, distorted"
-```
+The default values are chosen to provide good results out-of-the-box with minimal waiting time. For higher quality images, consider increasing steps or switching to models like sdxl.
 
 ### Model-Specific Parameter Recommendations
+
+> **Note**: These recommendations build on the [Default Parameters by Model](#default-parameters-by-model) section and provide practical examples.
 
 For best results when using specific models via command line:
 
@@ -579,6 +502,156 @@ When using the command line, you don't need to specify these parameters unless y
 - For batch processing, consider creating a shell script that calls DiffuGen with different parameters
 - To see all available command-line options, run `./diffugen.sh --help`
 - The same engine powers both the MCP interface and command-line tool, so quality and capabilities are identical
+
+## ⚙️ Configuration
+
+DiffuGen provides a template JSON configuration file (`diffugen.json`) that defines server settings, environment variables, and resource paths. This template should be copied into your IDE's MCP configuration file. This section explains the various configuration options available.
+
+### MCP Configuration File Structure
+
+The MCP configuration file has the following structure:
+
+```json
+{
+  "mcpServers": {
+    "diffugen": {
+      "command": "/path/to/diffugen.sh",
+      "args": [],
+      "env": {
+        "CUDA_VISIBLE_DEVICES": "0",
+        "SD_CPP_PATH": "/path/to/stable-diffusion.cpp"
+      },
+      "resources": {
+        "models_dir": "/path/to/stable-diffusion.cpp/models",
+        "output_dir": "/path/to/outputs",
+        "vram_usage": "adaptive"
+      },
+      "metadata": {
+        // metadata fields
+      },
+      "cursorOptions": {
+        // Cursor-specific options
+      },
+      "windsurfOptions": {
+        // Windsurf-specific options
+      }
+    }
+  }
+}
+```
+
+### Key Configuration Elements
+
+#### Command and Arguments
+
+- **command**: Full path to the `diffugen.sh` script
+- **args**: Additional command-line arguments to pass to the script (usually left empty)
+
+#### Environment Variables
+
+- **CUDA_VISIBLE_DEVICES**: Controls which GPUs are used for generation
+  - `"0"`: Use only the first GPU
+  - `"1"`: Use only the second GPU
+  - `"0,1"`: Use both first and second GPUs
+  - `"-1"`: Disable CUDA and use CPU only
+
+- **SD_CPP_PATH**: Path to the stable-diffusion.cpp installation directory
+  - This is used to locate the stable-diffusion.cpp binary and models
+
+#### Resource Configuration
+
+- **models_dir**: Directory containing the model files
+  - Should point to the `models` directory inside your stable-diffusion.cpp installation
+
+- **output_dir**: Directory where generated images will be saved
+  - Must be writable by the user running DiffuGen
+
+- **vram_usage**: Controls VRAM usage strategy
+  - `"adaptive"`: Automatically adjust memory usage based on available VRAM
+  - `"minimal"`: Use minimal VRAM at the cost of speed
+  - `"balanced"`: Balance memory usage and speed (default)
+  - `"maximum"`: Use maximum available VRAM for best performance
+
+### IDE-Specific Options
+
+#### Cursor Options
+
+```json
+"cursorOptions": {
+  "autoApprove": true,
+  "category": "Image Generation",
+  "icon": "🖼️",
+  "displayName": "DiffuGen"
+}
+```
+
+- **autoApprove**: Whether to automatically approve tool use without user confirmation
+- **category**: Category for grouping in the Cursor MCP tools list
+- **icon**: Emoji icon to display in the UI
+- **displayName**: Display name in the Cursor UI
+
+#### Windsurf Options
+
+```json
+"windsurfOptions": {
+  "displayName": "DiffuGen",
+  "icon": "🖼️",
+  "category": "Creative Tools"
+}
+```
+
+- **displayName**: Display name in the Windsurf UI
+- **icon**: Emoji icon to display in the UI
+- **category**: Category for grouping in the Windsurf tools list
+
+### Configuration File Locations
+
+There are two ways DiffuGen uses configuration:
+
+1. **Primary Method**: Copy the diffugen.json template into your IDE's MCP configuration file:
+   - Cursor: `~/.cursor/mcp.json`
+   - Windsurf: `~/.codeium/windsurf/mcp_config.json`
+   - Roo Code and Cline: Check IDE documentation for specific paths
+
+2. **Fallback Method**: DiffuGen will also look for configuration in these locations (in order):
+   - Environment variables (SD_CPP_PATH, DIFFUGEN_OUTPUT_DIR)
+   - Local `./diffugen.json` in the DiffuGen directory (as a fallback)
+   - IDE-specific MCP configuration files
+
+The recommended approach is to add DiffuGen's configuration to your IDE's MCP configuration file, as this is how the IDE will know how to launch and communicate with DiffuGen.
+
+### Customizing Default Parameters
+
+You can customize default parameters for each model by adding a `default_params` section to your configuration:
+
+```json
+"default_params": {
+  "steps": {
+    "flux-schnell": 12,
+    "sdxl": 30
+  },
+  "cfg_scale": {
+    "sd15": 9.0
+  },
+  "sampling_method": {
+    "flux-schnell": "euler",
+    "sdxl": "dpm++2m"
+  }
+}
+```
+
+This allows you to override the built-in defaults for specific models.
+
+### Updating Configuration Files
+
+When using the automatic setup script, a template configuration file (diffugen.json) is created automatically with proper paths for your system. To integrate DiffuGen with your IDE:
+
+1. Copy the contents of the generated `diffugen.json` file
+2. Paste it into your IDE's MCP configuration file (e.g., `~/.cursor/mcp.json`)
+3. Verify that paths match your installation
+4. Restart your IDE to apply changes
+
+While DiffuGen can read from a local diffugen.json file as a fallback, the proper way to use DiffuGen is through your IDE's MCP integration, which requires adding the configuration to your IDE's MCP config file.
 
 ## 📃 Advanced Usage
 
