@@ -364,6 +364,52 @@ Generate an image of a cyberpunk street scene, model=flux-dev, width=768, height
 ```
 Create an illustration of a fantasy character with model=sd15, width=512, height=768, steps=30, cfg_scale=7.5, sampling_method=dpm++2m, negative_prompt=blurry, low quality, distorted
 ```
+## 📝 Configuration
+
+DiffuGen can be configured via the `diffugen.json` file in the root directory:
+
+```json
+{
+  "sd_cpp_path": "/path/to/stable-diffusion.cpp",
+  "models_dir": "/path/to/stable-diffusion.cpp/models",
+  "output_dir": "/path/to/outputs",
+  "default_model": "flux-schnell",
+  "vram_usage": "adaptive",
+  "gpu_layers": -1,
+  "default_params": {
+    "width": 512,
+    "height": 512,
+    "steps": {
+      "flux-schnell": 8,
+      "flux-dev": 20,
+      "sdxl": 20,
+      "sd3": 20,
+      "sd15": 20
+    },
+    "cfg_scale": {
+      "flux-schnell": 1.0,
+      "flux-dev": 1.0,
+      "sdxl": 7.0,
+      "sd3": 7.0,
+      "sd15": 7.0
+    },
+    "sampling_method": "euler"
+  }
+}
+```
+
+### Configuration Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `sd_cpp_path` | Path to stable-diffusion.cpp directory | Required |
+| `models_dir` | Path to models directory | `${sd_cpp_path}/models` |
+| `output_dir` | Path where generated images are saved | `./outputs` |
+| `default_model` | Default model to use when not specified | `flux-schnell` |
+| `vram_usage` | VRAM usage policy | `adaptive` |
+| `gpu_layers` | Number of layers to offload to GPU (-1 for auto) | `-1` |
+| `default_params` | Default parameters for image generation | See above |
+
 
 ### Parameter Reference
 
@@ -553,52 +599,6 @@ If you encounter issues not covered here, you can:
 - Check the GitHub repository for issues and solutions
 - Run with debug logging enabled: `DEBUG=1 ./diffugen.sh "your prompt"`
 - Contact the developers via GitHub issues
-
-## 📝 Configuration
-
-DiffuGen can be configured via the `diffugen.json` file in the root directory:
-
-```json
-{
-  "sd_cpp_path": "/path/to/stable-diffusion.cpp",
-  "models_dir": "/path/to/stable-diffusion.cpp/models",
-  "output_dir": "/path/to/outputs",
-  "default_model": "flux-schnell",
-  "vram_usage": "adaptive",
-  "gpu_layers": -1,
-  "default_params": {
-    "width": 512,
-    "height": 512,
-    "steps": {
-      "flux-schnell": 8,
-      "flux-dev": 20,
-      "sdxl": 20,
-      "sd3": 20,
-      "sd15": 20
-    },
-    "cfg_scale": {
-      "flux-schnell": 1.0,
-      "flux-dev": 1.0,
-      "sdxl": 7.0,
-      "sd3": 7.0,
-      "sd15": 7.0
-    },
-    "sampling_method": "euler"
-  }
-}
-```
-
-### Configuration Options
-
-| Option | Description | Default |
-|--------|-------------|---------|
-| `sd_cpp_path` | Path to stable-diffusion.cpp directory | Required |
-| `models_dir` | Path to models directory | `${sd_cpp_path}/models` |
-| `output_dir` | Path where generated images are saved | `./outputs` |
-| `default_model` | Default model to use when not specified | `flux-schnell` |
-| `vram_usage` | VRAM usage policy | `adaptive` |
-| `gpu_layers` | Number of layers to offload to GPU (-1 for auto) | `-1` |
-| `default_params` | Default parameters for image generation | See above |
 
 ## 🌟 Contributing
 
