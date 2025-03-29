@@ -1974,33 +1974,33 @@ display_tui_menu() {
     echo -e "${BOLD_PURPLE}===== DiffuGen Setup Menu ====="
     echo
 
-    echo -e "${YELLOW}1. Install dependencies${NC} ${CYAN}(~2 min)${NC}"
+    echo -e "${YELLOW}1.  Install dependencies${NC} ${CYAN}(~2 min)${NC}"
     echo -e "   ${WHITE}Install required packages for building and running DiffuGen${NC}"
     
-    echo -e "${YELLOW}2. Clone/update stable-diffusion.cpp${NC} ${CYAN}(~1 min)${NC}"
+    echo -e "${YELLOW}2.  Clone/update stable-diffusion.cpp${NC} ${CYAN}(~1 min)${NC}"
     echo -e "   ${WHITE}Get or update the core stable-diffusion.cpp code repository${NC}"
     
-    echo -e "${YELLOW}3. Build stable-diffusion.cpp${NC} ${CYAN}(~10-20 min)${NC}"
+    echo -e "${YELLOW}3.  Build stable-diffusion.cpp${NC} ${CYAN}(~10-20 min)${NC}"
     echo -e "   ${WHITE}Compile the stable-diffusion.cpp library - CPU intensive${NC}"
     
-    echo -e "${YELLOW}4. Set up Python environment${NC} ${CYAN}(~2 min)${NC}"
+    echo -e "${YELLOW}4.  Set up Python environment${NC} ${CYAN}(~2 min)${NC}"
     echo -e "   ${WHITE}Create virtual environment and install Python dependencies${NC}"
     
-    echo -e "${YELLOW}5. Update configuration files${NC} ${CYAN}(~1 min)${NC}"
+    echo -e "${YELLOW}5.  Update configuration files${NC} ${CYAN}(~1 min)${NC}"
     echo -e "   ${WHITE}Configure file paths for your system${NC}"
     
     echo
-    echo -e "${BOLD_YELLOW}6. Run all steps ${PURPLE}(recommended)${NC}"
+    echo -e "${BOLD_YELLOW}6.  Run all steps ${PURPLE}(recommended)${NC}"
     echo -e "   ${WHITE}Complete setup with core components (steps 1-5)${NC}"
     
     echo
-    echo -e "${CYAN}7. Download models${NC} ${CYAN}(long process - may take hours)${NC}"
+    echo -e "${CYAN}7.  Download models${NC} ${CYAN}(long process - may take hours)${NC}"
     echo -e "   ${WHITE}Download Stable Diffusion models (several GB of data)${NC}"
     
-    echo -e "${YELLOW}8. ${YELLOW}Model Manager${NC}"
+    echo -e "${YELLOW}8.  ${YELLOW}Model Manager${NC}"
     echo -e "   ${WHITE}Manage, view, and clean up downloaded models${NC}"
     
-    echo -e "${PURPLE}9. ${BOLD_PURPLE}Display Guide${NC}"
+    echo -e "${PURPLE}9.  ${BOLD_PURPLE}Display Guide${NC}"
     echo -e "   ${WHITE}View comprehensive usage instructions${NC}"
     
     echo -e "${CYAN}10. ${BOLD_CYAN}Clean up partial downloads${NC}"
@@ -2138,11 +2138,11 @@ model_manager() {
         
         # Display the submenu
         echo -e "${BOLD_PURPLE}===== Model Management Options ====="
-        echo -e "${YELLOW}1. View installed models"
-        echo -e "${YELLOW}2. Delete models"
-        echo -e "${YELLOW}3. Check model integrity"
-        echo -e "${YELLOW}4. View detailed model information"
-        echo -e "${RED}5. Return to main menu"
+        echo -e "${YELLOW}1.  View installed models"
+        echo -e "${YELLOW}2.  Delete models"
+        echo -e "${YELLOW}3.  Check model integrity"
+        echo -e "${YELLOW}4.  View detailed model information"
+        echo -e "${RED}5.  Return to main menu"
         echo
         
         echo -ne "${YELLOW}Enter your choice ${BOLD_PURPLE}(${BOLD_PURPLE}1${BOLD_PURPLE}-${BOLD_PURPLE}5${BOLD_PURPLE}): ${BOLD_PURPLE}"
