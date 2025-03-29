@@ -1907,9 +1907,6 @@ model_selection_menu() {
         
         # Create fancy download indicator with divider to separate from previous output
         echo -e "${BOLD_WHITE}────────────────────────────────────────────────────────────────────────${NC}"
-        echo -e "${BOLD_PURPLE}┌─────────────────────────────────────────────────────────┐"
-        echo -e "${BOLD_PURPLE}│ ${BOLD_WHITE}Downloading: ${BOLD_YELLOW}$name${BOLD_PURPLE}                                     "
-        echo -e "${BOLD_PURPLE}└─────────────────────────────────────────────────────────┘${NC}"
         
         # Add estimation of file size if available in the model description
         if [[ $name == "sd15" ]]; then
