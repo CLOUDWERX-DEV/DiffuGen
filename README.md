@@ -150,7 +150,7 @@ The setup script will:
 - Install necessary dependencies
 - Clone and build stable-diffusion.cpp
 - Set up a Python virtual environment
-- Download selected models
+- Download selected models (Note: Some models require Clip\VAE Models as well)
 - Configure file paths for your system
 
 ### Manual Installation
