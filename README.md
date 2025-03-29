@@ -132,6 +132,7 @@ The easiest way to install DiffuGen is using the provided setup script:
 ```bash
 git clone https://github.com/CLOUDWERX-DEV/diffugen.git
 cd diffugen
+chmod +x diffugen.sh
 chmod +x setup_diffugen.sh
 ./setup_diffugen.sh
 ```
@@ -202,7 +203,13 @@ stable-diffusion.cpp/models/
 └── v1-5-pruned-emaonly.safetensors  # SD1.5 model
 ```
 
-5. Update file paths in configuration:
+5. Update file paths in configuration: (this is fallback and you can always set ENV variable via the MCP json)
+
+Set shell script as Executable
+
+```
+chmod +x diffugen.sh
+```
 
 Edit the `diffugen.py` script to update the `sd_cpp_path` variable to point to your stable-diffusion.cpp installation directory:
 
