@@ -382,7 +382,6 @@ DiffuGen supports the following environment variables:
 |----------|-------------|---------|
 | `SD_CPP_PATH` | Path to stable-diffusion.cpp | `./stable-diffusion.cpp` |
 | `DIFFUGEN_OUTPUT_DIR` | Where images are saved | Current directory |
-| `DEFAULT_MODEL` | Default model to use | `flux-schnell` |
 | `CUDA_VISIBLE_DEVICES` | CUDA devices to use | `0` |
 
 ### Resource Configuration

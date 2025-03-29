@@ -895,7 +895,7 @@ setup_stable_diffusion_cpp() {
         echo
         if [[ $REPLY =~ ^[Yy]$ ]]; then
             print_color "BLUE" "Updating stable-diffusion.cpp repository..." "info"
-            (cd stable-diffusion.cpp && git pull origin master && git submodule init && git submodule update) &
+            (cd stable-diffusion.cpp && git pull origin main && git submodule init && git submodule update) &
             pid=$!
             spinner $pid
             wait $pid
@@ -1065,11 +1065,44 @@ build_stable_diffusion_cpp() {
     echo -e "\n"
     
     if [ $build_status -ne 0 ]; then
-        print_color "RED" "Compilation failed. Showing tail of make_output.log:" "error"
+        print_color "YELLOW" "First build attempt failed. Trying once more..." "warning"
         echo "------------------------------------------------------------"
-        tail -n 20 make_output.log
+        tail -n 10 make_output.log
         echo "------------------------------------------------------------"
-        return 1
+        
+        # Try building one more time
+        make -j$(nproc) > make_output.log 2>&1 &
+        build_pid=$!
+        
+        # Show a spinner with elapsed time for second attempt
+        start_time=$(date +%s)
+        while kill -0 $build_pid 2>/dev/null; do
+            current_time=$(date +%s)
+            elapsed=$((current_time - start_time))
+            
+            if [ $elapsed -gt 60 ]; then
+                mins=$((elapsed / 60))
+                secs=$((elapsed % 60))
+                echo -ne "${BOLD_PURPLE}Second build attempt in progress... ${WHITE}${mins}m ${secs}s elapsed${NC}\r"
+            else
+                echo -ne "${BOLD_PURPLE}Second build attempt in progress... ${WHITE}${elapsed}s elapsed${NC}\r"
+            fi
+            
+            sleep 1
+        done
+        
+        # Check if the second build was successful
+        wait $build_pid
+        build_status=$?
+        echo -e "\n"
+        
+        if [ $build_status -ne 0 ]; then
+            print_color "RED" "Compilation failed after two attempts. Showing tail of make_output.log:" "error"
+            echo "------------------------------------------------------------"
+            tail -n 20 make_output.log
+            echo "------------------------------------------------------------"
+            return 1
+        fi
     fi
     
     # Verify the build was successful
@@ -1963,8 +1996,7 @@ display_tui_menu() {
             display_tui_menu
             ;;
         2)
-            # Check dependencies before proceeding with build
-            run_with_error_handling "Checking build dependencies" "dependencies" check_dependencies "build"
+            # Remove duplicate dependency check to fix the issue
             run_with_error_handling "Setting up stable-diffusion.cpp" "repository" setup_stable_diffusion_cpp
             read -p "Press Enter to continue..."  # Add this back
             display_tui_menu

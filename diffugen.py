@@ -4,6 +4,7 @@ import logging
 import subprocess
 import uuid
 import re
+import argparse
 from pathlib import Path
 
 # Simplified logging setup - log only essential info
@@ -360,7 +361,63 @@ def generate_flux_image(prompt: str, output_dir: str = None, cfg_scale: float = 
 
 if __name__ == "__main__":
     try:
-        mcp.run()
+        # Check if command line arguments are provided for direct image generation
+        if len(sys.argv) > 1:
+            # Parse command line arguments
+            parser = argparse.ArgumentParser(description="Generate images using Stable Diffusion")
+            parser.add_argument("prompt", type=str, help="The image description to generate")
+            parser.add_argument("--model", type=str, default="flux-schnell", help="Model to use (flux-schnell, flux-dev, sdxl, sd3, sd15)")
+            parser.add_argument("--width", type=int, default=512, help="Image width in pixels")
+            parser.add_argument("--height", type=int, default=512, help="Image height in pixels")
+            parser.add_argument("--steps", type=int, default=8, help="Number of diffusion steps")
+            parser.add_argument("--cfg-scale", type=float, dest="cfg_scale", default=1.0, help="CFG scale parameter")
+            parser.add_argument("--seed", type=int, default=-1, help="Seed for reproducibility (-1 for random)")
+            parser.add_argument("--sampling-method", type=str, dest="sampling_method", default="euler", help="Sampling method")
+            parser.add_argument("--negative-prompt", type=str, dest="negative_prompt", default="", help="Negative prompt")
+            parser.add_argument("--output-dir", type=str, dest="output_dir", default=None, help="Directory to save the image")
+            
+            # Parse arguments
+            args, unknown = parser.parse_known_args()
+            
+            # Determine which generation function to use based on model
+            if args.model.lower().startswith("flux-"):
+                log_to_stderr(f"Generating Flux image with model: {args.model}")
+                result = generate_flux_image(
+                    prompt=args.prompt,
+                    model=args.model,
+                    width=args.width,
+                    height=args.height,
+                    steps=args.steps,
+                    cfg_scale=args.cfg_scale,
+                    seed=args.seed,
+                    sampling_method=args.sampling_method,
+                    output_dir=args.output_dir
+                )
+            else:
+                log_to_stderr(f"Generating standard image with model: {args.model}")
+                result = generate_stable_diffusion_image(
+                    prompt=args.prompt,
+                    model=args.model,
+                    width=args.width,
+                    height=args.height,
+                    steps=args.steps,
+                    cfg_scale=args.cfg_scale,
+                    seed=args.seed,
+                    sampling_method=args.sampling_method,
+                    negative_prompt=args.negative_prompt,
+                    output_dir=args.output_dir
+                )
+            
+            # Print the result path
+            if result.get("success", False):
+                print(f"Image generated successfully: {result['image_path']}")
+                sys.exit(0)
+            else:
+                log_to_stderr(f"Image generation failed: {result.get('error', 'Unknown error')}")
+                sys.exit(1)
+        else:
+            # No arguments provided, start the MCP server
+            mcp.run()
     except Exception as e:
-        logging.error(f"Error running MCP server: {e}")
+        logging.error(f"Error running DiffuGen: {e}")
         sys.exit(1)
