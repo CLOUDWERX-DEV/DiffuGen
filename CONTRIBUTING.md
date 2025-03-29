@@ -70,8 +70,8 @@ If you have an idea for an enhancement, please create an issue on GitHub with th
 
 2. Create and activate a virtual environment:
    ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   python -m venv diffugen_env
+   source diffugen_env/bin/activate  # On Windows: venv\Scripts\activate
    ```
 
 3. Install development dependencies:
