@@ -344,8 +344,8 @@ def generate_stable_diffusion_image(prompt: str, model: str = "sd15", output_dir
         }
 
 @mcp.tool()
-def generate_flux_image(prompt: str, output_dir: str = None, cfg_scale: float = 1.0, 
-                        sampling_method: str = "euler", steps: int = 4,
+def generate_flux_image(prompt: str, output_dir: str = None, cfg_scale: float = None, 
+                        sampling_method: str = "euler", steps: int = None,
                         model: str = "flux-schnell", width: int = 512, 
                         height: int = 512, seed: int = -1) -> dict:
     """
@@ -356,9 +356,9 @@ def generate_flux_image(prompt: str, output_dir: str = None, cfg_scale: float = 
         prompt: The image description to generate
         model: Flux model to use (only "flux-schnell" or "flux-dev" are supported)
         output_dir: Directory to save the image (defaults to current directory)
-        cfg_scale: CFG scale parameter (default: 1.0)
+        cfg_scale: CFG scale parameter (default: 1.0 for all flux models)
         sampling_method: Sampling method to use (default: euler)
-        steps: Number of diffusion steps (default: 4)
+        steps: Number of diffusion steps (default: 8 for flux-schnell, 20 for flux-dev)
         width: Image width in pixels (default: 512)
         height: Image height in pixels (default: 512)
         seed: Seed for reproducibility (-1 for random)
@@ -372,6 +372,16 @@ def generate_flux_image(prompt: str, output_dir: str = None, cfg_scale: float = 
             "success": False,
             "error": f"Model {model} is not a Flux model. Only flux-schnell and flux-dev are supported by this tool."
         }
+    
+    # Set model-specific defaults if not provided
+    if cfg_scale is None:
+        cfg_scale = 1.0  # Same default for both models
+    
+    if steps is None:
+        if model.lower() == "flux-schnell":
+            steps = 8  # Default for flux-schnell
+        else:  # flux-dev
+            steps = 20  # Default for flux-dev
     
     # If output_dir is None, use the default_output_dir
     if output_dir is None:
@@ -393,6 +403,7 @@ def generate_flux_image(prompt: str, output_dir: str = None, cfg_scale: float = 
     # Log the SD_CPP_PATH for debugging
     logging.debug(f"Using SD_CPP_PATH: {sd_cpp_path}")
     logging.debug(f"Output path: {output_path}")
+    logging.debug(f"Using model {model} with {steps} steps and cfg_scale {cfg_scale}")
     
     # Base command with common arguments
     base_command = [

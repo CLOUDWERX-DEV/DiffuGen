@@ -1317,7 +1317,7 @@ update_file_paths() {
             
             # Continue to the next file
             continue
-        }
+        fi
         
         # Replace all instances of /path/to/diffugen with the actual path
         cross_platform_sed "s|/path/to/diffugen|$normalized_path|g" "$file"
