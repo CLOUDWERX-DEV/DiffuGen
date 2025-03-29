@@ -51,13 +51,14 @@ MCP (Model Context Protocol) is a protocol that enables LLMs (Large Language Mod
 DiffuGen functions as an MCP server that provides text-to-image generation capabilities. It implements the MCP protocol to allow compatible IDEs to send generation requests and receive generated images.
 
 The server exposes two main tools:
-1. `generate_stable_diffusion_image`: The primary tool for standard image generation with full parameter control
-2. `generate_flux_image`: A simplified version for quick generation using the Flux models
+1. `generate_stable_diffusion_image`: Generate with Stable Diffusion models
+2. `generate_flux_image`: Generate with Flux models
 
 ### Technical Architecture
 
 DiffuGen consists of several key components:
 
+- **setup-diffugen.sh**: The complete install utility and model downloader and manager
 - **diffugen.py**: The core Python script that implements the MCP server functionality and defines the generation tools
 - **diffugen.sh**: A shell script launcher that sets up the environment and launches the Python server
 - **diffugen.json**: Configuration file for MCP integration with various IDEs
@@ -93,7 +94,7 @@ This allows DiffuGen to provide high-quality image generation with exceptional p
   - Sampling steps
   - CFG scale
   - Seed values
-  - Negative prompts
+  - Negative prompts (for SD models only, Flux does not support negative prompts.)
   - Sampling methods
 - **CUDA Acceleration**: Utilizes GPU acceleration for faster image generation
 - **Natural Language Interface**: Generate images using simple natural language commands
@@ -518,13 +519,13 @@ This project is licensed under the Apache License - see the LICENSE file for det
 - Discord: [Join our server](https://discord.gg/SvZFuufNTQ)
 
 ```
-         ______   __   ___   ___         _______              
-        |   _  \ |__|.'  _|.'  _|.--.--.|   _   |.-----.-----.
-        |.  |   \|  ||   _||   _||  |  ||.  |___||  -__|     |
-        |.  |    \__||__|  |__|  |_____||.  |   ||_____|__|__|
-        |:  1    /                      |:  1   |             
-        |::.. . /                       |::.. . |             
-        `------'                        `-------'             
+            ______   __   ___   ___         _______              
+           |   _  \ |__|.'  _|.'  _|.--.--.|   _   |.-----.-----.
+           |.  |   \|  ||   _||   _||  |  ||.  |___||  -__|     |
+           |.  |    \__||__|  |__|  |_____||.  |   ||_____|__|__|
+           |:  1    /                      |:  1   |             
+           |::.. . /                       |::.. . |             
+           `------'                        `-------'             
 ```
 
 <p align="center">
