@@ -4,7 +4,6 @@
       "command": "./diffugen.sh",
       "args": [],
       "env": {
-        "DEFAULT_MODEL": "flux-schnell",
         "CUDA_VISIBLE_DEVICES": "0",
         "SD_CPP_PATH": "./stable-diffusion.cpp"
       },
