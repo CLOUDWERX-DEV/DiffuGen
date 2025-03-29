@@ -1862,11 +1862,13 @@ display_tui_menu() {
     echo -e "${YELLOW}5. Update configuration files${NC} ${CYAN}(~1 min)${NC}"
     echo -e "   ${WHITE}Configure file paths for your system${NC}"
     
-    echo -e "${YELLOW}6. Download models${NC} ${CYAN}(long process - may take hours)${NC}"
-    echo -e "   ${WHITE}Download Stable Diffusion models (several GB of data)${NC}"
+    echo
+    echo -e "${BOLD_YELLOW}6. Run all steps ${PURPLE}(recommended)${NC}"
+    echo -e "   ${WHITE}Complete setup with core components (steps 1-5)${NC}"
     
-    echo -e "${BOLD_YELLOW}7. Run all steps ${PURPLE}(recommended)${NC}"
-    echo -e "   ${WHITE}Complete setup with all essential components${NC}"
+    echo
+    echo -e "${CYAN}7. Download models${NC} ${CYAN}(long process - may take hours)${NC}"
+    echo -e "   ${WHITE}Download Stable Diffusion models (several GB of data)${NC}"
     
     echo -e "${YELLOW}8. ${YELLOW}Model Manager${NC}"
     echo -e "   ${WHITE}Manage, view, and clean up downloaded models${NC}"
@@ -1874,10 +1876,13 @@ display_tui_menu() {
     echo -e "${PURPLE}9. ${BOLD_PURPLE}Display Guide${NC}"
     echo -e "   ${WHITE}View comprehensive usage instructions${NC}"
     
-    echo -e "${RED}10. ${BOLD_RED}Exit${NC}"
+    echo -e "${CYAN}10. ${BOLD_CYAN}Clean up partial downloads${NC}"
+    echo -e "    ${WHITE}Find and remove incomplete or partial downloads${NC}"
+    
+    echo -e "${RED}11. ${BOLD_RED}Exit${NC}"
     echo
     
-    echo -ne "${YELLOW}Enter your choice ${BOLD_PURPLE}(${BOLD_PURPLE}1${BOLD_PURPLE}-${BOLD_PURPLE}10${BOLD_PURPLE}): ${BOLD_PURPLE}"
+    echo -ne "${YELLOW}Enter your choice ${BOLD_PURPLE}(${BOLD_PURPLE}1${BOLD_PURPLE}-${BOLD_PURPLE}11${BOLD_PURPLE}): ${BOLD_PURPLE}"
     read choice
     echo -ne "${NC}"
     echo
@@ -1913,44 +1918,29 @@ display_tui_menu() {
             display_tui_menu
             ;;
         6)
-            # Run model_selection_menu directly
-            model_selection_menu
-            # Check return code but don't trigger error handling for cancellation
-            if [ $? -ne 0 ]; then
-                print_color "YELLOW" "Model download was cancelled or failed." "info"
-            fi
-            read -p "Press Enter to continue..."
-            display_tui_menu
-            ;;
-        7)
             run_with_error_handling "Installing dependencies" "" install_dependencies
             run_with_error_handling "Setting up stable-diffusion.cpp" "" setup_stable_diffusion_cpp
             run_with_error_handling "Building stable-diffusion.cpp" "" build_stable_diffusion_cpp
             run_with_error_handling "Setting up Python environment" "" setup_venv
             run_with_error_handling "Updating configuration files" "" update_file_paths
             
-            # Ask about model downloads
+            # Core setup complete message
             echo
-            print_color "BOLD_YELLOW" "DiffuGen core setup is complete!" "success"
+            print_color "BOLD_GREEN" "✅ DiffuGen core setup complete! ✅" "success"
             echo
-            print_color "BOLD_CYAN" "Would you like to download models now?" "info"
-            echo -e "${BOLD_WHITE}Models are large files (1-10GB each) and may take a long time to download."
-            echo -e "${BOLD_WHITE}You can always download them later using option 6 from the main menu.${NC}"
-            echo
-            read -p "$(echo -e ${BOLD_YELLOW}Download models now? \(y/n\)${NC} )" -n 1 -r
-            echo
+            print_color "BOLD_YELLOW" "You can now use option 7 to download models when ready." "info"
+            print_color "BOLD_YELLOW" "Models are large files (1-10GB each) and may take a long time to download." "info"
             
-            if [[ $REPLY =~ ^[Yy]$ ]]; then
-                run_with_error_handling "Downloading models" "" model_selection_menu
-            else
-                print_color "YELLOW" "Skipping model downloads. You can download them later from the main menu." "info"
+            read -p "Press Enter to continue..."
+            display_tui_menu
+            ;;
+        7)
+            # Run model_selection_menu directly
+            model_selection_menu
+            # Check return code but don't trigger error handling for cancellation
+            if [ $? -ne 0 ]; then
+                print_color "YELLOW" "Model download was cancelled or failed." "info"
             fi
-            
-            print_color "GREEN" "DiffuGen setup completed successfully!" "success"
-            
-            # Show completion guide
-            show_completion_guide
-            
             read -p "Press Enter to continue..."
             display_tui_menu
             ;;
@@ -1965,6 +1955,11 @@ display_tui_menu() {
             display_tui_menu
             ;;    
         10)
+            run_with_error_handling "Cleaning up partial downloads" "" cleanup_partial_downloads
+            read -p "Press Enter to continue..."
+            display_tui_menu
+            ;;
+        11)
             print_color "YELLOW" "Exiting DiffuGen setup." "warning"
             exit 0
             ;;
@@ -2084,8 +2079,8 @@ view_installed_models() {
     echo -e "${BOLD_WHITE}║ ${BOLD_PURPLE}#${NC}$(printf '%*s' $num_width "")${BOLD_YELLOW}Model Name${NC}$(printf '%*s' $((name_width - 10)) "") ${BOLD_GREEN}Size${NC}$(printf '%*s' $((size_width - 4)) "") ${BOLD_BLUE}Type${NC}$(printf '%*s' $((type_width - 4)) "") ${BOLD_CYAN}Status${NC}$(printf '%*s' $((status_width - 6)) "")${BOLD_WHITE}${NC}"
     echo -e "${BOLD_WHITE}╠════════════════════════════════════════════════════════════════════════════════════╣${NC}"
     
-    # Find all model files in the directory and subdirectories (only certain extensions)
-    local model_files=($(find "$MODELS_DIR" -type f \( -name "*.safetensors" -o -name "*.pth" -o -name "*.ckpt" -o -name "*.bin" \) | sort))
+    # Find all model files in the directory and subdirectories (include .gguf and .sft extensions)
+    local model_files=($(find "$MODELS_DIR" -type f \( -name "*.safetensors" -o -name "*.pth" -o -name "*.ckpt" -o -name "*.bin" -o -name "*.gguf" -o -name "*.sft" \) 2>/dev/null | sort))
     
     if [ ${#model_files[@]} -eq 0 ]; then
         echo -e "${BOLD_WHITE}║ ${YELLOW}No model files found${NC}$(printf '%*s' $((table_width - 20)) "")${BOLD_WHITE}${NC}"
@@ -2103,16 +2098,22 @@ view_installed_models() {
             
             # Determine model type
             local model_type=""
-            if [[ "$filename" == *"sdxl"* ]]; then
+            if [[ "$filename" == *"flux"* || "$rel_path" == *"flux/"* || "$filename" == *".gguf" ]]; then
+                model_type="Flux"
+            elif [[ "$filename" == *"sdxl"* ]]; then
                 model_type="SDXL"
             elif [[ "$filename" == *"sd15"* || "$filename" == *"v1-5"* ]]; then
                 model_type="SD 1.5"
+            elif [[ "$filename" == *"sd3"* ]]; then
+                model_type="SD 3"
             elif [[ "$filename" == *"control"* ]]; then
                 model_type="ControlNet"
             elif [[ "$filename" == *"lora"* ]]; then
                 model_type="LoRA"
             elif [[ "$filename" == *"clip"* ]]; then
                 model_type="CLIP"
+            elif [[ "$filename" == *"vae"* || "$filename" == *"ae.sft" ]]; then
+                model_type="VAE"
             else
                 model_type="Standard"
             fi
@@ -2171,7 +2172,7 @@ delete_model() {
     fi
     
     # Find all model files in the directory and subdirectories
-    local model_files=($(find "$MODELS_DIR" -type f \( -name "*.safetensors" -o -name "*.pth" -o -name "*.ckpt" -o -name "*.bin" \) | sort))
+    local model_files=($(find "$MODELS_DIR" -type f \( -name "*.safetensors" -o -name "*.pth" -o -name "*.ckpt" -o -name "*.bin" -o -name "*.gguf" -o -name "*.sft" \) 2>/dev/null | sort))
     
     if [ ${#model_files[@]} -eq 0 ]; then
         print_color "YELLOW" "No model files found in: $MODELS_DIR" "warning"
@@ -2298,7 +2299,7 @@ check_model_integrity() {
     fi
     
     # Find all model files in the directory and subdirectories
-    local model_files=($(find "$MODELS_DIR" -type f \( -name "*.safetensors" -o -name "*.pth" -o -name "*.ckpt" -o -name "*.bin" \) | sort))
+    local model_files=($(find "$MODELS_DIR" -type f \( -name "*.safetensors" -o -name "*.pth" -o -name "*.ckpt" -o -name "*.bin" -o -name "*.gguf" -o -name "*.sft" \) 2>/dev/null | sort))
     
     if [ ${#model_files[@]} -eq 0 ]; then
         print_color "YELLOW" "No model files found in: $MODELS_DIR" "warning"
@@ -2539,7 +2540,7 @@ view_model_details() {
     fi
     
     # Find all model files in the directory and subdirectories
-    local model_files=($(find "$MODELS_DIR" -type f \( -name "*.safetensors" -o -name "*.pth" -o -name "*.ckpt" -o -name "*.bin" \) | sort))
+    local model_files=($(find "$MODELS_DIR" -type f \( -name "*.safetensors" -o -name "*.pth" -o -name "*.ckpt" -o -name "*.bin" -o -name "*.gguf" -o -name "*.sft" \) 2>/dev/null | sort))
     
     if [ ${#model_files[@]} -eq 0 ]; then
         print_color "YELLOW" "No model files found in: $MODELS_DIR" "warning"
@@ -2861,7 +2862,7 @@ handle_interrupt() {
     print_color "BOLD_YELLOW" "Operation cancelled by user." "warning"
     
     # Check if we have an ongoing download to clean up
-    if [ "$CURRENT_OPERATION" = "download" ] && [ -n "$current_model_name" ] && [ -n "$current_download_file" ]; then
+    if [ "$CURRENT_OPERATION" = "download" ] && [ -n "$current_model_name" ]; then
         echo
         print_color "YELLOW" "A download of '$current_model_name' was in progress." "info"
         
@@ -2893,7 +2894,44 @@ handle_interrupt() {
                 print_color "YELLOW" "Keeping incomplete download file. You can try to resume the download later." "info"
             fi
         else
+            # Check for any potential partial files related to this download
+            local partial_dir="$(dirname "$current_download_file")"
+            local partial_base="$(basename "$current_download_file" | cut -d. -f1)"
+            local partial_files=($(find "$partial_dir" -name "${partial_base}*.part" 2>/dev/null))
+            
+            if [ ${#partial_files[@]} -gt 0 ]; then
+                print_color "YELLOW" "Found partial download files that may be incomplete:" "info"
+                for partial_file in "${partial_files[@]}"; do
+                    echo -e "${BOLD_WHITE}Path: ${CYAN}$partial_file${NC}"
+                    
+                    # Get file size in a human-readable format
+                    local file_size=$(du -h "$partial_file" 2>/dev/null | cut -f1)
+                    if [ -n "$file_size" ]; then
+                        echo -e "${BOLD_WHITE}Size: ${CYAN}$file_size${NC}"
+                    fi
+                done
+                
+                echo
+                read -p "$(echo -e ${BOLD_YELLOW}Would you like to remove these incomplete download files? \(y/n\)${NC} )" -n 1 -r
+                echo
+                
+                if [[ $REPLY =~ ^[Yy]$ ]]; then
+                    echo
+                    print_color "YELLOW" "Removing incomplete download files..." "info"
+                    local removed=0
+                    for partial_file in "${partial_files[@]}"; do
+                        rm -f "$partial_file"
+                        if [ ! -f "$partial_file" ]; then
+                            removed=$((removed + 1))
+                        fi
+                    done
+                    print_color "BOLD_GREEN" "✓ $removed/${#partial_files[@]} incomplete download files removed successfully" "success"
+                else
+                    print_color "YELLOW" "Keeping incomplete download files. You can try to resume the download later." "info"
+                fi
+            else
                 print_color "YELLOW" "Keeping incomplete download file. You can try to resume the download later." "info"
+            fi
         fi
     else
         # For other operations, just clean any temp files silently
@@ -2924,6 +2962,190 @@ handle_interrupt() {
 
 # Set up trap to catch interrupts
 trap handle_interrupt INT TERM
+
+# Function to clean up partial downloads
+cleanup_partial_downloads() {
+    clear
+    print_color "BOLD_CYAN" "CLEAN UP PARTIAL DOWNLOADS" "header"
+    
+    # Set MODELS_DIR if not already set
+    if [ -z "$MODELS_DIR" ]; then
+        MODELS_DIR="./stable-diffusion.cpp/models"
+    fi
+    
+    # Check if models directory exists
+    if [ ! -d "$MODELS_DIR" ]; then
+        print_color "RED" "Models directory not found at: $MODELS_DIR" "error"
+        read -p "Press Enter to continue..."
+        return 1
+    fi
+    
+    echo -e "${BOLD_WHITE}Searching for partial downloads and incomplete files...${NC}"
+    echo
+    
+    # Find partial download files (*.part files)
+    local part_files=($(find "$MODELS_DIR" -type f -name "*.part" 2>/dev/null | sort))
+    
+    # Find very small files that might be incomplete (less than 10KB)
+    local small_files=($(find "$MODELS_DIR" -type f -size -10k \( -name "*.safetensors" -o -name "*.pth" -o -name "*.ckpt" -o -name "*.bin" -o -name "*.gguf" -o -name "*.sft" \) 2>/dev/null | sort))
+    
+    # Merge the lists, avoiding duplicates
+    local all_files=()
+    for file in "${part_files[@]}"; do
+        all_files+=("$file")
+    done
+    
+    for file in "${small_files[@]}"; do
+        # Check if the file is not already in the list
+        local is_duplicate=false
+        for existing in "${all_files[@]}"; do
+            if [ "$existing" = "$file" ]; then
+                is_duplicate=true
+                break
+            fi
+        done
+        
+        if [ "$is_duplicate" = false ]; then
+            all_files+=("$file")
+        fi
+    done
+    
+    # Display results
+    if [ ${#all_files[@]} -eq 0 ]; then
+        print_color "BOLD_GREEN" "✓ No partial downloads or incomplete files found." "success"
+        read -p "Press Enter to continue..."
+        return 0
+    fi
+    
+    # Display the found files in a table
+    print_color "BOLD_YELLOW" "Found ${#all_files[@]} potential partial downloads or incomplete files:" "warning"
+    echo
+    
+    # Define table
+    echo -e "${BOLD_WHITE}╔════════════════════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BOLD_WHITE}║ ${BOLD_CYAN}# ${BOLD_YELLOW}File Path                            ${BOLD_GREEN}Size      ${BOLD_BLUE}Type          ${BOLD_WHITE}${NC}"
+    echo -e "${BOLD_WHITE}╠════════════════════════════════════════════════════════════════════════════╣${NC}"
+    
+    # Display files in table
+    for ((i=0; i<${#all_files[@]}; i++)); do
+        local file="${all_files[$i]}"
+        local filename=$(basename "$file")
+        local rel_path=${file#"$MODELS_DIR/"}
+        
+        # Get file size
+        local size=$(du -h "$file" 2>/dev/null | cut -f1)
+        if [ -z "$size" ]; then size="unknown"; fi
+        
+        # Determine file type
+        local file_type="Incomplete"
+        if [[ "$filename" == *.part ]]; then
+            file_type="Partial"
+        elif [[ "$filename" == *.gguf ]]; then
+            file_type="GGUF"
+        elif [[ "$filename" == *.safetensors ]]; then
+            file_type="Safetensors"
+        elif [[ "$filename" == *.pth ]]; then
+            file_type="PyTorch"
+        elif [[ "$filename" == *.ckpt ]]; then
+            file_type="Checkpoint"
+        elif [[ "$filename" == *.bin ]]; then
+            file_type="Binary"
+        elif [[ "$filename" == *.sft ]]; then
+            file_type="SFT"
+        fi
+        
+        # Trim path if too long
+        if [ ${#rel_path} -gt 36 ]; then
+            rel_path="...${rel_path: -33}"
+        fi
+        
+        # Print table row
+        echo -e "${BOLD_WHITE}║${NC} ${BOLD_CYAN}$(($i+1))${NC} ${BOLD_YELLOW}${rel_path}${NC}$(printf '%*s' $((37 - ${#rel_path})) "") ${BOLD_GREEN}${size}${NC}$(printf '%*s' $((10 - ${#size})) "") ${BOLD_BLUE}${file_type}${NC}$(printf '%*s' $((14 - ${#file_type})) "")${BOLD_WHITE}║${NC}"
+    done
+    
+    # Table footer
+    echo -e "${BOLD_WHITE}╚════════════════════════════════════════════════════════════════════════════╝${NC}"
+    echo
+    
+    # Present options to the user
+    echo -e "${BOLD_WHITE}What would you like to do with these files?${NC}"
+    echo -e "${BOLD_PURPLE}1${NC}. ${BOLD_YELLOW}Delete all files${NC}"
+    echo -e "${BOLD_PURPLE}2${NC}. ${BOLD_YELLOW}Select specific file(s) to delete${NC}"
+    echo -e "${BOLD_PURPLE}0${NC}. ${BOLD_YELLOW}Cancel${NC} (keep all files)"
+    echo
+    
+    echo -ne "${YELLOW}Your choice: ${BOLD_PURPLE}"
+    read cleanup_choice
+    echo -ne "${NC}"
+    
+    case $cleanup_choice in
+        0)
+            print_color "YELLOW" "Operation cancelled. No files were deleted." "warning"
+            ;;
+        1)
+            # Delete all files
+            echo
+            print_color "YELLOW" "Deleting all files..." "warning"
+            local success_count=0
+            
+            for file in "${all_files[@]}"; do
+                echo -ne "${YELLOW}Deleting: ${CYAN}$(basename "$file")${NC}... "
+                
+                if rm "$file" 2>/dev/null; then
+                    echo -e "${BOLD_GREEN}✓${NC}"
+                    success_count=$((success_count + 1))
+                else
+                    echo -e "${BOLD_RED}✗${NC}"
+                fi
+            done
+            
+            print_color "BOLD_GREEN" "✓ $success_count/${#all_files[@]} files deleted successfully" "success"
+            ;;
+        2)
+            # Select specific files
+            echo
+            print_color "YELLOW" "Enter the number(s) of the file(s) to delete, separated by spaces:" "info"
+            echo -ne "${YELLOW}Your selection: ${BOLD_PURPLE}"
+            read -a selected_indices
+            echo -ne "${NC}"
+            
+            if [ ${#selected_indices[@]} -eq 0 ]; then
+                print_color "YELLOW" "No files selected. Operation cancelled." "warning"
+            else
+                echo
+                print_color "YELLOW" "Deleting selected files..." "warning"
+                local success_count=0
+                
+                for index in "${selected_indices[@]}"; do
+                    # Convert to zero-based index
+                    index=$((index - 1))
+                    
+                    if [ $index -ge 0 ] && [ $index -lt ${#all_files[@]} ]; then
+                        local file="${all_files[$index]}"
+                        echo -ne "${YELLOW}Deleting: ${CYAN}$(basename "$file")${NC}... "
+                        
+                        if rm "$file" 2>/dev/null; then
+                            echo -e "${BOLD_GREEN}✓${NC}"
+                            success_count=$((success_count + 1))
+                        else
+                            echo -e "${BOLD_RED}✗${NC}"
+                        fi
+                    else
+                        print_color "RED" "Invalid selection: $((index + 1))" "error"
+                    fi
+                done
+                
+                print_color "BOLD_GREEN" "✓ $success_count/${#selected_indices[@]} files deleted successfully" "success"
+            fi
+            ;;
+        *)
+            print_color "RED" "Invalid choice. No files were deleted." "error"
+            ;;
+    esac
+    
+    echo
+    return 0
+}
 
 # Initialize the menu directly without calling display_logo separately
 display_tui_menu
