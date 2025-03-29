@@ -44,7 +44,7 @@
 
 ## 🚀 Introduction
 
-DiffuGen is an advanced image generation tool powered by Stable Diffusion, designed to seamlessly integrate with modern development environments through the MCP (Model Context Protocol) interface. It supports multiple Stable Diffusion models including Flux Schnell, Flux Dev, SDXL, and SD3, allowing for high-quality image generation with precise control over parameters.
+DiffuGen is a powerful MCP-based image generation system that brings cutting-edge AI models directly into your development workflow. It seamlessly integrates both Flux models (Flux Schnell, Flux Dev) and Stable Diffusion variants (SDXL, SD3, SD1.5) into a unified interface, allowing you to leverage the unique strengths of each model family without switching tools. With comprehensive parameter control and multi-GPU support, DiffuGen scales from rapid concept sketches on modest hardware to production-quality visuals on high-performance systems.
 
 Built on top of the highly optimized [stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp) implementation, DiffuGen offers exceptional performance even on modest hardware while maintaining high-quality output.
 

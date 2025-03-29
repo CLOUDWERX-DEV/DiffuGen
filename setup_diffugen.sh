@@ -1471,6 +1471,16 @@ update_file_paths() {
     print_color "GREEN" "✅ Configuration files updated successfully! ✅" "success"
     echo -e "${BOLD_GREEN}Original files backed up to: ${WHITE}$backup_dir/${NC}"
     
+    # Ensure diffugen.sh is executable
+    echo -ne "${YELLOW}Setting execute permissions on diffugen.sh...${NC} "
+    chmod +x diffugen.sh
+    if [ $? -eq 0 ]; then
+        echo -e "${BOLD_GREEN}✓${NC}"
+    else
+        echo -e "${BOLD_RED}✗${NC}"
+        print_color "RED" "Failed to set execute permissions on diffugen.sh" "error"
+    fi
+    
     return 0
 }
 
