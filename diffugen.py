@@ -51,7 +51,7 @@ def load_config():
         "sd_cpp_path": os.path.join(os.getcwd(), "stable-diffusion.cpp"),
         "models_dir": None,  # Will be set based on sd_cpp_path if not provided
         "output_dir": os.getcwd(),
-        "default_model": "flux-schnell",
+        "default_model": None,  # No default model, will be determined by function
         "vram_usage": "adaptive",
         "gpu_layers": -1,
         "default_params": {
@@ -219,9 +219,10 @@ def generate_stable_diffusion_image(prompt: str, model: str = None, output_dir: 
     Returns:
         A dictionary containing the path to the generated image and the command used
     """
-    # Use configuration defaults if not provided
-    model = model or config["default_model"]
-    # For SD models, don't use flux models as default
+    # Use configuration defaults if not provided, with sd15 as default for SD models
+    model = model or config["default_model"] or "sd15"
+    
+    # For SD models, don't use flux models
     if model.lower().startswith("flux-"):
         model = "sd15"  # Default to sd15 if a flux model was selected
     
@@ -358,8 +359,13 @@ def generate_flux_image(prompt: str, output_dir: str = None, cfg_scale: float = 
     Returns:
         A dictionary containing the path to the generated image and the command used
     """
-    # Use configuration defaults if not provided
-    model = model or config["default_model"]
+    # Use configuration defaults if not provided, with flux-schnell as fallback for Flux models
+    model = model or config["default_model"] or "flux-schnell"
+    
+    # If a non-flux model was specified, default to flux-schnell
+    if not model.lower().startswith("flux-"):
+        model = "flux-schnell"
+        
     width = width or config["default_params"]["width"]
     height = height or config["default_params"]["height"]
     sampling_method = sampling_method or get_default_sampling_method()
@@ -469,7 +475,7 @@ if __name__ == "__main__":
             # Parse command line arguments
             parser = argparse.ArgumentParser(description="Generate images using Stable Diffusion")
             parser.add_argument("prompt", type=str, help="The image description to generate")
-            parser.add_argument("--model", type=str, default=config["default_model"], 
+            parser.add_argument("--model", type=str, 
                                 help="Model to use (flux-schnell, flux-dev, sdxl, sd3, sd15)")
             parser.add_argument("--width", type=int, default=config["default_params"]["width"], 
                                 help="Image width in pixels")
@@ -493,6 +499,16 @@ if __name__ == "__main__":
             # Parse arguments
             args, unknown = parser.parse_known_args()
             
+            # Determine model - use from args, config, or choose appropriate default
+            if args.model is None:
+                args.model = config["default_model"]
+                # If still None, prompt the user to specify a model
+                if args.model is None:
+                    log_to_stderr("Model not specified. Please specify a model using --model. Available options:")
+                    log_to_stderr("  Flux models: flux-schnell, flux-dev")
+                    log_to_stderr("  SD models: sdxl, sd3, sd15")
+                    sys.exit(1)
+                    
             # Set model-specific defaults if not provided
             if args.steps is None:
                 args.steps = get_default_steps(args.model)
