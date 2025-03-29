@@ -5,6 +5,7 @@ import subprocess
 import uuid
 import re
 import argparse
+import json
 from pathlib import Path
 
 # Simplified logging setup - log only essential info
@@ -44,31 +45,121 @@ if mcp is None:
     log_to_stderr("Failed to create MCP server")
     sys.exit(1)
 
-# Core path initialization
-sd_cpp_path = os.path.normpath(os.environ.get("SD_CPP_PATH", os.path.join(os.getcwd(), "stable-diffusion.cpp")))
-default_output_dir = os.path.normpath(os.environ.get("DIFFUGEN_OUTPUT_DIR", os.getcwd()))
-
-# Try to read from MCP configuration if output dir not explicitly set
-if "DIFFUGEN_OUTPUT_DIR" not in os.environ:
+# Function to load configuration
+def load_config():
+    config = {
+        "sd_cpp_path": os.path.join(os.getcwd(), "stable-diffusion.cpp"),
+        "models_dir": None,  # Will be set based on sd_cpp_path if not provided
+        "output_dir": os.getcwd(),
+        "default_model": "flux-schnell",
+        "vram_usage": "adaptive",
+        "gpu_layers": -1,
+        "default_params": {
+            "width": 512,
+            "height": 512,
+            "steps": {
+                "flux-schnell": 8,
+                "flux-dev": 20,
+                "sdxl": 20,
+                "sd3": 20,
+                "sd15": 20
+            },
+            "cfg_scale": {
+                "flux-schnell": 1.0,
+                "flux-dev": 1.0,
+                "sdxl": 7.0,
+                "sd3": 7.0,
+                "sd15": 7.0
+            },
+            "sampling_method": "euler"
+        }
+    }
+    
+    # Try to read from environment variables first
+    if "SD_CPP_PATH" in os.environ:
+        config["sd_cpp_path"] = os.path.normpath(os.environ["SD_CPP_PATH"])
+    
+    if "DIFFUGEN_OUTPUT_DIR" in os.environ:
+        config["output_dir"] = os.path.normpath(os.environ["DIFFUGEN_OUTPUT_DIR"])
+    
+    # Try to read from diffugen.json configuration
+    try:
+        diffugen_json_path = os.path.join(os.getcwd(), "diffugen.json")
+        if os.path.exists(diffugen_json_path):
+            logging.info(f"Loading configuration from {diffugen_json_path}")
+            with open(diffugen_json_path, 'r') as f:
+                diffugen_config = json.load(f)
+                # Update our config with values from diffugen.json config
+                for key, value in diffugen_config.items():
+                    config[key] = value
+                    logging.info(f"Loaded config setting from diffugen.json: {key}")
+    except Exception as e:
+        logging.warning(f"Error loading diffugen.json configuration: {e}")
+    
+    # Also check for Cursor MCP config
     try:
         cursor_mcp_path = os.path.join(os.getcwd(), ".cursor", "mcp.json")
         if os.path.exists(cursor_mcp_path):
-            import json
+            logging.info(f"Loading configuration from {cursor_mcp_path}")
             with open(cursor_mcp_path, 'r') as f:
-                mcp_config = json.load(f)
-                if ('mcpServers' in mcp_config and 
-                    'diffugen' in mcp_config.get('mcpServers', {}) and 
-                    'resources' in mcp_config.get('mcpServers', {}).get('diffugen', {}) and 
-                    'output_dir' in mcp_config.get('mcpServers', {}).get('diffugen', {}).get('resources', {})):
+                cursor_config = json.load(f)
+                if ('mcpServers' in cursor_config and 
+                    'diffugen' in cursor_config.get('mcpServers', {}) and 
+                    'resources' in cursor_config.get('mcpServers', {}).get('diffugen', {})):
                     
-                    default_output_dir = os.path.normpath(
-                        mcp_config['mcpServers']['diffugen']['resources']['output_dir']
-                    )
-    except Exception:
-        pass  # Silently continue with default if config can't be read
+                    resources = cursor_config['mcpServers']['diffugen']['resources']
+                    if 'output_dir' in resources:
+                        config['output_dir'] = os.path.normpath(resources['output_dir'])
+                        logging.info(f"Using output_dir from MCP config: {config['output_dir']}")
+                    if 'models_dir' in resources:
+                        config['models_dir'] = os.path.normpath(resources['models_dir'])
+                        logging.info(f"Using models_dir from MCP config: {config['models_dir']}")
+                    if 'SD_CPP_PATH' in resources:
+                        config['sd_cpp_path'] = os.path.normpath(resources['SD_CPP_PATH'])
+                        logging.info(f"Using sd_cpp_path from MCP config: {config['sd_cpp_path']}")
+                    if 'vram_usage' in resources:
+                        config['vram_usage'] = resources['vram_usage']
+                        logging.info(f"Using vram_usage from MCP config: {config['vram_usage']}")
+                    if 'gpu_layers' in resources:
+                        config['gpu_layers'] = resources['gpu_layers']
+                        logging.info(f"Using gpu_layers from MCP config: {config['gpu_layers']}")
+                    # Look for default_model in environment variables section
+                    if 'env' in cursor_config.get('mcpServers', {}).get('diffugen', {}) and 'default_model' in cursor_config['mcpServers']['diffugen']['env']:
+                        config['default_model'] = cursor_config['mcpServers']['diffugen']['env']['default_model']
+                        logging.info(f"Using default_model from MCP config: {config['default_model']}")
+    except Exception as e:
+        logging.warning(f"Error loading MCP configuration: {e}")
+    
+    # If models_dir wasn't set, use sd_cpp_path/models
+    if not config["models_dir"]:
+        config["models_dir"] = os.path.join(config["sd_cpp_path"], "models")
+    
+    return config
+
+# Load the configuration
+config = load_config()
+
+# Core path initialization (using the config we loaded)
+sd_cpp_path = os.path.normpath(config["sd_cpp_path"])
+default_output_dir = os.path.normpath(config["output_dir"])
 
 # Create output directory
 os.makedirs(default_output_dir, exist_ok=True)
+
+# Helper functions to get model-specific parameters from config
+def get_default_steps(model):
+    """Get default steps for a model"""
+    model = model.lower()
+    return config["default_params"]["steps"].get(model, 20)
+
+def get_default_cfg_scale(model):
+    """Get default CFG scale for a model"""
+    model = model.lower()
+    return config["default_params"]["cfg_scale"].get(model, 7.0)
+
+def get_default_sampling_method():
+    """Get default sampling method"""
+    return config["default_params"]["sampling_method"]
 
 # Lazy-loaded model paths - only resolved when needed
 _model_paths = {}
@@ -78,12 +169,13 @@ def get_model_path(model_name):
     """Lazy-load model paths only when needed"""
     if not _model_paths:
         # Initialize paths only on first access
+        models_dir = config["models_dir"]
         _model_paths.update({
-            "flux-schnell": os.path.join(sd_cpp_path, "models", "flux", "flux-1-schnell.Q8_0.gguf"),
-            "flux-dev": os.path.join(sd_cpp_path, "models", "flux", "flux1-dev-Q8_0.gguf"),
-            "sdxl": os.path.join(sd_cpp_path, "models", "sdxl-1.0-base.safetensors"),
-            "sd3": os.path.join(sd_cpp_path, "models", "sd3-medium.safetensors"),
-            "sd15": os.path.join(sd_cpp_path, "models", "sd15.safetensors"),
+            "flux-schnell": os.path.join(models_dir, "flux", "flux-1-schnell.Q8_0.gguf"),
+            "flux-dev": os.path.join(models_dir, "flux", "flux1-dev-Q8_0.gguf"),
+            "sdxl": os.path.join(models_dir, "sdxl-1.0-base.safetensors"),
+            "sd3": os.path.join(models_dir, "sd3-medium.safetensors"),
+            "sd15": os.path.join(models_dir, "sd15.safetensors"),
         })
     return _model_paths.get(model_name)
 
@@ -91,11 +183,12 @@ def get_supporting_file(file_name):
     """Lazy-load supporting file paths only when needed"""
     if not _supporting_files:
         # Initialize paths only on first access
+        models_dir = config["models_dir"]
         _supporting_files.update({
-            "vae": os.path.join(sd_cpp_path, "models", "ae.sft"),
-            "clip_l": os.path.join(sd_cpp_path, "models", "clip_l.safetensors"),
-            "t5xxl": os.path.join(sd_cpp_path, "models", "t5xxl_fp16.safetensors"),
-            "sdxl_vae": os.path.join(sd_cpp_path, "models", "sdxl_vae-fp16-fix.safetensors")
+            "vae": os.path.join(models_dir, "ae.sft"),
+            "clip_l": os.path.join(models_dir, "clip_l.safetensors"),
+            "t5xxl": os.path.join(models_dir, "t5xxl_fp16.safetensors"),
+            "sdxl_vae": os.path.join(models_dir, "sdxl_vae-fp16-fix.safetensors")
         })
     return _supporting_files.get(file_name)
 
@@ -103,10 +196,10 @@ def get_supporting_file(file_name):
 log_to_stderr("DiffuGen ready")
 
 @mcp.tool()
-def generate_stable_diffusion_image(prompt: str, model: str = "sd15", output_dir: str = None, 
-                                   width: int = 512, height: int = 512, steps: int = 20, 
-                                   cfg_scale: float = 7.0, seed: int = -1, 
-                                   sampling_method: str = "euler_a", negative_prompt: str = "") -> dict:
+def generate_stable_diffusion_image(prompt: str, model: str = None, output_dir: str = None, 
+                                   width: int = None, height: int = None, steps: int = None, 
+                                   cfg_scale: float = None, seed: int = -1, 
+                                   sampling_method: str = None, negative_prompt: str = "") -> dict:
     """
     Generate an image using standard Stable Diffusion models (NOT Flux).
     For Flux models (flux-schnell, flux-dev), use generate_flux_image instead.
@@ -126,6 +219,18 @@ def generate_stable_diffusion_image(prompt: str, model: str = "sd15", output_dir
     Returns:
         A dictionary containing the path to the generated image and the command used
     """
+    # Use configuration defaults if not provided
+    model = model or config["default_model"]
+    # For SD models, don't use flux models as default
+    if model.lower().startswith("flux-"):
+        model = "sd15"  # Default to sd15 if a flux model was selected
+    
+    width = width or config["default_params"]["width"]
+    height = height or config["default_params"]["height"]
+    sampling_method = sampling_method or get_default_sampling_method()
+    cfg_scale = cfg_scale or get_default_cfg_scale(model)
+    steps = steps or get_default_steps(model)
+    
     # Validate that flux models are not used with this tool
     if model.lower().startswith("flux-"):
         return {
@@ -232,9 +337,9 @@ def generate_stable_diffusion_image(prompt: str, model: str = "sd15", output_dir
 
 @mcp.tool()
 def generate_flux_image(prompt: str, output_dir: str = None, cfg_scale: float = None, 
-                        sampling_method: str = "euler", steps: int = None,
-                        model: str = "flux-schnell", width: int = 512, 
-                        height: int = 512, seed: int = -1) -> dict:
+                        sampling_method: str = None, steps: int = None,
+                        model: str = None, width: int = None, 
+                        height: int = None, seed: int = -1) -> dict:
     """
     Generate an image using Flux stable diffusion models ONLY.
     Use this tool for any request involving flux-schnell or flux-dev models.
@@ -253,22 +358,20 @@ def generate_flux_image(prompt: str, output_dir: str = None, cfg_scale: float = 
     Returns:
         A dictionary containing the path to the generated image and the command used
     """
+    # Use configuration defaults if not provided
+    model = model or config["default_model"]
+    width = width or config["default_params"]["width"]
+    height = height or config["default_params"]["height"]
+    sampling_method = sampling_method or get_default_sampling_method()
+    cfg_scale = cfg_scale or get_default_cfg_scale(model)
+    steps = steps or get_default_steps(model)
+    
     # Validate that only flux models are used with this tool
     if model.lower() not in ["flux-schnell", "flux-dev"]:
         return {
             "success": False,
             "error": f"Model {model} is not a Flux model. Only flux-schnell and flux-dev are supported by this tool."
         }
-    
-    # Set model-specific defaults if not provided
-    if cfg_scale is None:
-        cfg_scale = 1.0  # Same default for both models
-    
-    if steps is None:
-        if model.lower() == "flux-schnell":
-            steps = 8  # Default for flux-schnell
-        else:  # flux-dev
-            steps = 20  # Default for flux-dev
     
     # If output_dir is None, use the default_output_dir
     if output_dir is None:
@@ -366,18 +469,35 @@ if __name__ == "__main__":
             # Parse command line arguments
             parser = argparse.ArgumentParser(description="Generate images using Stable Diffusion")
             parser.add_argument("prompt", type=str, help="The image description to generate")
-            parser.add_argument("--model", type=str, default="flux-schnell", help="Model to use (flux-schnell, flux-dev, sdxl, sd3, sd15)")
-            parser.add_argument("--width", type=int, default=512, help="Image width in pixels")
-            parser.add_argument("--height", type=int, default=512, help="Image height in pixels")
-            parser.add_argument("--steps", type=int, default=8, help="Number of diffusion steps")
-            parser.add_argument("--cfg-scale", type=float, dest="cfg_scale", default=1.0, help="CFG scale parameter")
-            parser.add_argument("--seed", type=int, default=-1, help="Seed for reproducibility (-1 for random)")
-            parser.add_argument("--sampling-method", type=str, dest="sampling_method", default="euler", help="Sampling method")
-            parser.add_argument("--negative-prompt", type=str, dest="negative_prompt", default="", help="Negative prompt")
-            parser.add_argument("--output-dir", type=str, dest="output_dir", default=None, help="Directory to save the image")
+            parser.add_argument("--model", type=str, default=config["default_model"], 
+                                help="Model to use (flux-schnell, flux-dev, sdxl, sd3, sd15)")
+            parser.add_argument("--width", type=int, default=config["default_params"]["width"], 
+                                help="Image width in pixels")
+            parser.add_argument("--height", type=int, default=config["default_params"]["height"], 
+                                help="Image height in pixels")
+            # For steps and cfg_scale, we'll determine the default based on the model after parsing
+            parser.add_argument("--steps", type=int, default=None, 
+                                help="Number of diffusion steps")
+            parser.add_argument("--cfg-scale", type=float, dest="cfg_scale", default=None, 
+                                help="CFG scale parameter")
+            parser.add_argument("--seed", type=int, default=-1, 
+                                help="Seed for reproducibility (-1 for random)")
+            parser.add_argument("--sampling-method", type=str, dest="sampling_method", 
+                                default=get_default_sampling_method(), 
+                                help="Sampling method")
+            parser.add_argument("--negative-prompt", type=str, dest="negative_prompt", default="", 
+                                help="Negative prompt")
+            parser.add_argument("--output-dir", type=str, dest="output_dir", default=None, 
+                                help="Directory to save the image")
             
             # Parse arguments
             args, unknown = parser.parse_known_args()
+            
+            # Set model-specific defaults if not provided
+            if args.steps is None:
+                args.steps = get_default_steps(args.model)
+            if args.cfg_scale is None:
+                args.cfg_scale = get_default_cfg_scale(args.model)
             
             # Determine which generation function to use based on model
             if args.model.lower().startswith("flux-"):
