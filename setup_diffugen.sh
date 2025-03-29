@@ -1279,6 +1279,46 @@ update_file_paths() {
             normalized_path=$(echo "$current_dir" | sed 's/\\/\\\\\\\\/g')
         fi
         
+        # Special handling for diffugen.json with proper JSON structure
+        if [ "$file" = "diffugen.json" ]; then
+            echo -ne "\n${YELLOW}Updating JSON paths with proper structure in ${BOLD_WHITE}$file${YELLOW}...${NC} "
+            
+            # Check if the file has the mcpServers.diffugen structure
+            if grep -q "mcpServers" "$file" && grep -q "diffugen" "$file"; then
+                # Update resources.output_dir and resources.models_dir with correct paths
+                local models_dir="$current_dir/stable-diffusion.cpp/models"
+                local output_dir="$current_dir/outputs"
+                
+                # For Windows compatibility, escape backslashes
+                if [[ "$os_type" == "windows" ]]; then
+                    models_dir=$(echo "$models_dir" | sed 's/\\/\\\\\\\\/g')
+                    output_dir=$(echo "$output_dir" | sed 's/\\/\\\\\\\\/g')
+                fi
+                
+                # Update the resource paths in the JSON structure
+                cross_platform_sed 's|"models_dir": *"[^"]*"|"models_dir": "'"$models_dir"'"|g' "$file"
+                cross_platform_sed 's|"output_dir": *"[^"]*"|"output_dir": "'"$output_dir"'"|g' "$file"
+                
+                # Update SD_CPP_PATH in the environment section
+                cross_platform_sed 's|"SD_CPP_PATH": *"[^"]*"|"SD_CPP_PATH": "'"$normalized_path/stable-diffusion.cpp"'"|g' "$file"
+                
+                if [ $? -eq 0 ]; then
+                    echo -e "${BOLD_GREEN}✓${NC}"
+                else
+                    echo -e "${BOLD_RED}✗${NC}"
+                    print_color "RED" "Failed to update JSON structure in $file" "error"
+                    return 1
+                fi
+            else
+                echo -e "${BOLD_RED}✗${NC}"
+                print_color "RED" "JSON file does not have the expected mcpServers.diffugen structure" "error"
+                return 1
+            fi
+            
+            # Continue to the next file
+            continue
+        }
+        
         # Replace all instances of /path/to/diffugen with the actual path
         cross_platform_sed "s|/path/to/diffugen|$normalized_path|g" "$file"
         
@@ -1306,6 +1346,21 @@ update_file_paths() {
             cross_platform_sed "s|/[^\"']*/diffugen_env|$venv_path|g" "$file"
         fi
         
+        # For diffugen.sh, update the jq path handling for the MCP config
+        if [ "$file" = "diffugen.sh" ]; then
+            echo -ne "\n${YELLOW}Updating MCP config parsing in ${BOLD_WHITE}$file${YELLOW}...${NC} "
+            
+            # Update jq extraction to use the correct JSON path
+            cross_platform_sed "s|jq -r '.resources.output_dir // empty'|jq -r '.mcpServers.diffugen.resources.output_dir // empty'|g" "$file"
+            
+            if [ $? -eq 0 ]; then
+                echo -e "${BOLD_GREEN}✓${NC}"
+            else
+                echo -e "${BOLD_RED}✗${NC}"
+                print_color "RED" "Failed to update MCP config parsing in $file" "error"
+            fi
+        fi
+        
         # For diffugen.py specifically, ensure the sd_cpp_path line is updated with the full path
         if [ "$file" = "diffugen.py" ]; then
             echo -ne "\n${YELLOW}Updating SD_CPP_PATH in ${BOLD_WHITE}$file${YELLOW}...${NC} "
@@ -1321,6 +1376,18 @@ update_file_paths() {
             # Update the sd_cpp_path line with the full absolute path, regardless of its current format
             # This will handle both the dynamic path and any hardcoded path
             cross_platform_sed "s|sd_cpp_path = os.environ.get(\"SD_CPP_PATH\", .*)|sd_cpp_path = os.environ.get(\"SD_CPP_PATH\", \"$sd_cpp_full_path\")|g" "$file"
+            
+            # Also update the json parsing to use the mcpServers.diffugen structure
+            echo -ne "\n${YELLOW}Updating MCP JSON parsing in ${BOLD_WHITE}$file${YELLOW}...${NC} "
+            
+            # Make sure the JSON parsing code is using the mcpServers.diffugen structure
+            if grep -q "mcpServers.*diffugen" "$file"; then
+                echo -e "${BOLD_GREEN}✓ (Already updated)${NC}"
+            else
+                # If the file doesn't already have the updated structure, it needs a more comprehensive update
+                print_color "YELLOW" "The JSON parsing needs to be updated manually in $file" "warning"
+                print_color "YELLOW" "Please ensure it uses the mcpServers.diffugen.resources structure" "warning"
+            fi
             
             if [ $? -eq 0 ]; then
                 echo -e "${BOLD_GREEN}✓${NC}"
