@@ -1,11 +1,15 @@
 import sys
 import os
 import logging
+import subprocess
+import uuid
+import re
+from pathlib import Path
 
-# Set up logging to a file
+# Simplified logging setup - log only essential info
 logging.basicConfig(
     filename='diffugen_debug.log',
-    level=logging.DEBUG,
+    level=logging.INFO,  # Changed from DEBUG to INFO
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
@@ -13,164 +17,44 @@ logging.basicConfig(
 def log_to_stderr(message):
     print(message, file=sys.stderr, flush=True)
 
-# Log startup information
-logging.debug("Starting diffugen.py")
-logging.debug(f"Python version: {sys.version}")
-logging.debug(f"Python executable: {sys.executable}")
-logging.debug(f"Current working directory: {os.getcwd()}")
-logging.debug(f"Environment variables: {dict(os.environ)}")
-logging.debug(f"System path: {sys.path}")
-
-# Add current directory to path if not already there
-if os.getcwd() not in sys.path:
-    sys.path.insert(0, os.getcwd())
-    logging.debug(f"Added current directory to sys.path")
-
-logging.debug(f"Final Python path: {sys.path}")
-logging.debug("Starting to import modules...")
-
-# Compatibility shim for exceptiongroup
-try:
-    import exceptiongroup
-except ImportError:
-    log_to_stderr("Creating exceptiongroup compatibility layer")
-    import sys
-    import builtins
-    
-    class ExceptionGroup(Exception):
-        def __init__(self, message, exceptions):
-            super().__init__(message)
-            self.exceptions = exceptions
-    
-    class BaseExceptionGroup(BaseException):
-        def __init__(self, message, exceptions):
-            super().__init__(message)
-            self.exceptions = exceptions
-    
-    sys.modules['exceptiongroup'] = type('exceptiongroup', (), {
-        'ExceptionGroup': ExceptionGroup,
-        'BaseExceptionGroup': BaseExceptionGroup
-    })
-    builtins.ExceptionGroup = ExceptionGroup
-    builtins.BaseExceptionGroup = BaseExceptionGroup
-
-# Handle anyio import if needed
-try:
-    import anyio
-except ImportError:
-    log_to_stderr("Creating extensive anyio compatibility layer")
-    
-    # Create a Mock module with all necessary submodules
-    class MockModule:
-        def __init__(self):
-            pass
-            
-        def __getattr__(self, name):
-            # Create submodules on demand
-            log_to_stderr(f"Creating mock anyio.{name}")
-            submodule = MockModule()
-            setattr(self, name, submodule)
-            return submodule
-    
-    anyio_mock = MockModule()
-    # Add some basic functionality
-    anyio_mock.run = lambda func, *args, **kwargs: None
-    
-    # Create the streams submodule
-    streams_mock = MockModule()
-    anyio_mock.streams = streams_mock
-    
-    # Register the module
-    sys.modules['anyio'] = anyio_mock
-    sys.modules['anyio.streams'] = streams_mock
-
-# Define a fallback MCP class if imports fail
-class FallbackMCP:
-    def __init__(self, name):
-        self.name = name
-        log_to_stderr(f"Created fallback MCP server: {name}")
-    
-    def tool(self, *args, **kwargs):
-        def decorator(func):
-            log_to_stderr(f"Registered tool: {func.__name__}")
-            return func
-        return decorator
-    
-    def start(self):
-        log_to_stderr(f"Started fallback MCP server: {self.name}")
-        return True
-
-# Try to import real FastMCP
+# Try to import real FastMCP with minimal error handling
 mcp = None
 try:
     from mcp.server.fastmcp import FastMCP
-    logging.debug("Successfully imported FastMCP")
-    # Create an MCP server with the real implementation
-    logging.debug("Creating MCP server...")
     mcp = FastMCP("DiffuGen")
-    logging.debug("MCP server created successfully")
 except ImportError as e:
-    logging.error(f"Error importing FastMCP: {e}")
-    # Try alternative import
-    try:
-        logging.debug("Trying alternative import method...")
-        import importlib.util
-        import importlib.machinery
+    log_to_stderr(f"Error importing FastMCP: {e}")
+    
+    # Simple fallback MCP implementation
+    class FallbackMCP:
+        def __init__(self, name):
+            self.name = name
+            log_to_stderr(f"Using fallback MCP server: {name}")
         
-        # Try to locate mcp module
-        for path in sys.path:
-            mcp_init = os.path.join(path, 'mcp', '__init__.py')
-            if os.path.exists(mcp_init):
-                logging.debug(f"Found MCP module at {mcp_init}")
-                break
-        else:
-            logging.error("Could not find mcp module in sys.path")
+        def tool(self, *args, **kwargs):
+            def decorator(func): return func
+            return decorator
         
-        logging.error("Alternative import failed")
-        sys.exit(1)
-    except Exception as e2:
-        logging.error(f"Alternative import also failed: {e2}")
-        sys.exit(1)
-        
-    logging.debug("Using fallback MCP implementation")
+        def start(self): return True
+    
     mcp = FallbackMCP("DiffuGen")
 
 if mcp is None:
-    logging.error("Failed to create MCP server")
+    log_to_stderr("Failed to create MCP server")
     sys.exit(1)
 
-import subprocess
-import uuid
-import re
-from pathlib import Path
+# Core path initialization
+sd_cpp_path = os.path.normpath(os.environ.get("SD_CPP_PATH", os.path.join(os.getcwd(), "stable-diffusion.cpp")))
+default_output_dir = os.path.normpath(os.environ.get("DIFFUGEN_OUTPUT_DIR", os.getcwd()))
 
-# Get the path to the stable-diffusion.cpp directory from environment or use default
-# Use normpath to ensure cross-platform compatibility
-if "SD_CPP_PATH" in os.environ:
-    sd_cpp_path = os.path.normpath(os.environ["SD_CPP_PATH"])
-    logging.debug(f"Using SD_CPP_PATH from environment: {sd_cpp_path}")
-else:
-    sd_cpp_path = os.path.normpath(os.path.join(os.getcwd(), "stable-diffusion.cpp"))
-    logging.debug(f"Using default SD_CPP_PATH: {sd_cpp_path}")
-
-# Get the default output directory from environment variable or use current directory
-if "DIFFUGEN_OUTPUT_DIR" in os.environ:
-    default_output_dir = os.path.normpath(os.environ["DIFFUGEN_OUTPUT_DIR"])
-    logging.debug(f"Using DIFFUGEN_OUTPUT_DIR from environment: {default_output_dir}")
-else:
-    default_output_dir = os.path.normpath(os.getcwd())
-    logging.debug(f"Using current directory as output: {default_output_dir}")
-
-# Try to read from MCP configuration if available and DIFFUGEN_OUTPUT_DIR not set
+# Try to read from MCP configuration if output dir not explicitly set
 if "DIFFUGEN_OUTPUT_DIR" not in os.environ:
     try:
         cursor_mcp_path = os.path.join(os.getcwd(), ".cursor", "mcp.json")
         if os.path.exists(cursor_mcp_path):
             import json
-            logging.debug(f"Reading MCP configuration from: {cursor_mcp_path}")
             with open(cursor_mcp_path, 'r') as f:
                 mcp_config = json.load(f)
-                # Look specifically for the diffugen server config
                 if ('mcpServers' in mcp_config and 
                     'diffugen' in mcp_config.get('mcpServers', {}) and 
                     'resources' in mcp_config.get('mcpServers', {}).get('diffugen', {}) and 
@@ -179,36 +63,43 @@ if "DIFFUGEN_OUTPUT_DIR" not in os.environ:
                     default_output_dir = os.path.normpath(
                         mcp_config['mcpServers']['diffugen']['resources']['output_dir']
                     )
-                    logging.debug(f"Using output directory from diffugen MCP configuration: {default_output_dir}")
-                else:
-                    logging.debug("MCP configuration exists but diffugen server or output_dir not found")
-    except Exception as e:
-        logging.debug(f"Failed to read MCP configuration: {e}")
-        log_to_stderr(f"Warning: Failed to read MCP configuration: {e}")
+    except Exception:
+        pass  # Silently continue with default if config can't be read
 
-# Create the output directory if it doesn't exist
+# Create output directory
 os.makedirs(default_output_dir, exist_ok=True)
-logging.debug(f"Default output directory: {default_output_dir}")
 
-# Define model paths based on the SD_CPP_PATH using os.path.join for cross-platform compatibility
-MODEL_PATHS = {
-    "flux-schnell": os.path.join(sd_cpp_path, "models", "flux", "flux-1-schnell.Q8_0.gguf"),
-    "flux-dev": os.path.join(sd_cpp_path, "models", "flux", "flux1-dev-Q8_0.gguf"),
-    "sdxl": os.path.join(sd_cpp_path, "models", "sdxl-1.0-base.safetensors"),
-    "sd3": os.path.join(sd_cpp_path, "models", "sd3-medium.safetensors"),
-    "sd15": os.path.join(sd_cpp_path, "models", "sd15.safetensors"),
-}
+# Lazy-loaded model paths - only resolved when needed
+_model_paths = {}
+_supporting_files = {}
 
-# Define supporting files using os.path.join
-SUPPORTING_FILES = {
-    "vae": os.path.join(sd_cpp_path, "models", "ae.sft"),
-    "clip_l": os.path.join(sd_cpp_path, "models", "clip_l.safetensors"),
-    "t5xxl": os.path.join(sd_cpp_path, "models", "t5xxl_fp16.safetensors"),
-    "sdxl_vae": os.path.join(sd_cpp_path, "models", "sdxl_vae-fp16-fix.safetensors")
-}
+def get_model_path(model_name):
+    """Lazy-load model paths only when needed"""
+    if not _model_paths:
+        # Initialize paths only on first access
+        _model_paths.update({
+            "flux-schnell": os.path.join(sd_cpp_path, "models", "flux", "flux-1-schnell.Q8_0.gguf"),
+            "flux-dev": os.path.join(sd_cpp_path, "models", "flux", "flux1-dev-Q8_0.gguf"),
+            "sdxl": os.path.join(sd_cpp_path, "models", "sdxl-1.0-base.safetensors"),
+            "sd3": os.path.join(sd_cpp_path, "models", "sd3-medium.safetensors"),
+            "sd15": os.path.join(sd_cpp_path, "models", "sd15.safetensors"),
+        })
+    return _model_paths.get(model_name)
 
-# Add a ready message for system state
-log_to_stderr("DiffuGen Python server is fully initialized and ready to receive requests")
+def get_supporting_file(file_name):
+    """Lazy-load supporting file paths only when needed"""
+    if not _supporting_files:
+        # Initialize paths only on first access
+        _supporting_files.update({
+            "vae": os.path.join(sd_cpp_path, "models", "ae.sft"),
+            "clip_l": os.path.join(sd_cpp_path, "models", "clip_l.safetensors"),
+            "t5xxl": os.path.join(sd_cpp_path, "models", "t5xxl_fp16.safetensors"),
+            "sdxl_vae": os.path.join(sd_cpp_path, "models", "sdxl_vae-fp16-fix.safetensors")
+        })
+    return _supporting_files.get(file_name)
+
+# Minimal ready message
+log_to_stderr("DiffuGen ready")
 
 @mcp.tool()
 def generate_stable_diffusion_image(prompt: str, model: str = "sd15", output_dir: str = None, 
@@ -256,10 +147,6 @@ def generate_stable_diffusion_image(prompt: str, model: str = "sd15", output_dir
     os.makedirs(output_dir, exist_ok=True)
     output_path = os.path.normpath(os.path.join(output_dir, filename))
     
-    # Log the SD_CPP_PATH for debugging
-    logging.debug(f"Using SD_CPP_PATH: {sd_cpp_path}")
-    logging.debug(f"Output path: {output_path}")
-    
     # Base command with common arguments
     base_command = [
         os.path.normpath(os.path.join(sd_cpp_path, "build", "bin", "sd")),
@@ -281,26 +168,25 @@ def generate_stable_diffusion_image(prompt: str, model: str = "sd15", output_dir
     if negative_prompt:
         base_command.extend(["-n", sanitized_negative])
     
-    # Add model-specific arguments
+    # Add model-specific arguments using lazy-loaded paths
     if model.lower() == "sdxl":
         base_command.extend([
-            "-m", MODEL_PATHS["sdxl"],
-            "--vae", SUPPORTING_FILES["sdxl_vae"]
+            "-m", get_model_path("sdxl"),
+            "--vae", get_supporting_file("sdxl_vae")
         ])
     elif model.lower() == "sd3":
         base_command.extend([
-            "-m", MODEL_PATHS["sd3"]
+            "-m", get_model_path("sd3")
         ])
     elif model.lower() == "sd15":
         base_command.extend([
-            "-m", MODEL_PATHS["sd15"]
+            "-m", get_model_path("sd15")
         ])
     else:
         # Default to SD15 if model not recognized
         base_command.extend([
-            "-m", MODEL_PATHS["sd15"]
+            "-m", get_model_path("sd15")
         ])
-        logging.warning(f"Unrecognized model {model}, defaulting to sd15")
     
     # Detect platform and adjust paths if needed
     if os.name == 'nt':  # Windows
@@ -386,7 +272,6 @@ def generate_flux_image(prompt: str, output_dir: str = None, cfg_scale: float = 
     # If output_dir is None, use the default_output_dir
     if output_dir is None:
         output_dir = default_output_dir
-        logging.debug(f"Using default output directory: {default_output_dir}")
         
     # Sanitize the prompt to avoid command injection
     sanitized_prompt = re.sub(r'[^\w\s\-\.,;:!?()]', '', prompt)
@@ -399,11 +284,6 @@ def generate_flux_image(prompt: str, output_dir: str = None, cfg_scale: float = 
     # Determine output directory
     os.makedirs(output_dir, exist_ok=True)
     output_path = os.path.normpath(os.path.join(output_dir, filename))
-    
-    # Log the SD_CPP_PATH for debugging
-    logging.debug(f"Using SD_CPP_PATH: {sd_cpp_path}")
-    logging.debug(f"Output path: {output_path}")
-    logging.debug(f"Using model {model} with {steps} steps and cfg_scale {cfg_scale}")
     
     # Base command with common arguments
     base_command = [
@@ -422,20 +302,20 @@ def generate_flux_image(prompt: str, output_dir: str = None, cfg_scale: float = 
     if seed >= 0:
         base_command.extend(["--seed", str(seed)])
     
-    # Add model-specific arguments
+    # Add model-specific arguments - lazy-loaded
     if model.lower() == "flux-schnell":
         base_command.extend([
-            "--diffusion-model", MODEL_PATHS["flux-schnell"],
-            "--vae", SUPPORTING_FILES["vae"],
-            "--clip_l", SUPPORTING_FILES["clip_l"],
-            "--t5xxl", SUPPORTING_FILES["t5xxl"]
+            "--diffusion-model", get_model_path("flux-schnell"),
+            "--vae", get_supporting_file("vae"),
+            "--clip_l", get_supporting_file("clip_l"),
+            "--t5xxl", get_supporting_file("t5xxl")
         ])
     elif model.lower() == "flux-dev":
         base_command.extend([
-            "--diffusion-model", MODEL_PATHS["flux-dev"],
-            "--vae", SUPPORTING_FILES["vae"],
-            "--clip_l", SUPPORTING_FILES["clip_l"],
-            "--t5xxl", SUPPORTING_FILES["t5xxl"]
+            "--diffusion-model", get_model_path("flux-dev"),
+            "--vae", get_supporting_file("vae"),
+            "--clip_l", get_supporting_file("clip_l"),
+            "--t5xxl", get_supporting_file("t5xxl")
         ])
     
     # Detect platform and adjust paths if needed
@@ -479,12 +359,8 @@ def generate_flux_image(prompt: str, output_dir: str = None, cfg_scale: float = 
         }
 
 if __name__ == "__main__":
-    logging.debug("Starting MCP server with mcp.run()")
     try:
         mcp.run()
-        logging.debug("MCP server run() method completed")
     except Exception as e:
         logging.error(f"Error running MCP server: {e}")
-        import traceback
-        logging.error(traceback.format_exc())
         sys.exit(1)
