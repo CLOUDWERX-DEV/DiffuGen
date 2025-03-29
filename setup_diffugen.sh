@@ -895,19 +895,39 @@ setup_stable_diffusion_cpp() {
         echo
         if [[ $REPLY =~ ^[Yy]$ ]]; then
             print_color "BLUE" "Updating stable-diffusion.cpp repository..." "info"
-            (cd stable-diffusion.cpp && git pull origin main && git submodule init && git submodule update) &
-            pid=$!
-            spinner $pid
-            wait $pid
+            (cd stable-diffusion.cpp && {
+                # First try to pull with fast-forward only
+                if git pull origin master --ff-only; then
+                    print_color "GREEN" "Repository updated successfully!" "success"
+                else
+                    # If that fails, offer to reset to origin/master
+                    print_color "YELLOW" "Fast-forward update failed due to divergent branches." "warning"
+                    print_color "YELLOW" "Local changes might be lost if you continue." "warning"
+                    read -p "$(echo -e ${BOLD_YELLOW}Reset to upstream master branch? This will discard local changes. \(y/n\)${NC} )" -n 1 -r
+                    echo
+                    if [[ $REPLY =~ ^[Yy]$ ]]; then
+                        git fetch origin master && git reset --hard origin/master
+                        print_color "GREEN" "Repository reset to origin/master successfully!" "success"
+                    else
+                        print_color "YELLOW" "Continuing with existing repository version." "info"
+                        # Don't return 1 here - continue with existing repo
+                    fi
+                fi
+                git submodule init && git submodule update
+                return 0
+            })
             ret=$?
             if [ $ret -ne 0 ]; then
-                print_color "RED" "Failed to update repository. Detected dubious ownership?" "error"
-                print_color "YELLOW" "To add an exception for this directory, run:" "warning"
+                print_color "YELLOW" "There were some issues with the repository update." "warning"
+                print_color "YELLOW" "This is often due to permission issues or directory ownership." "info"
+                print_color "YELLOW" "To add an exception for this directory, run:" "info"
                 safe_dir=$(realpath stable-diffusion.cpp)
                 echo -e "${BOLD_CYAN}git config --global --add safe.directory ${safe_dir}${NC}"
-                return 1
+                print_color "BLUE" "Continuing with existing repository version." "info"
+                # Return success since we already have the repo
+                return 0
             else
-                print_color "BOLD_GREEN" "Repository updated successfully!" "success"
+                print_color "BOLD_GREEN" "Repository update completed successfully!" "success"
             fi
         else
             print_color "YELLOW" "Skipping update as requested." "info"
@@ -916,8 +936,8 @@ setup_stable_diffusion_cpp() {
         print_color "BLUE" "Cloning stable-diffusion.cpp..." "info"
         echo -e "${BOLD_CYAN}This may take a few minutes depending on your internet connection.${NC}"
         echo
-        git clone --recursive https://github.com/leejet/stable-diffusion.cpp &
-        spinner $!
+        print_color "YELLOW" "Cloning in progress..." "info"
+        git clone --recursive https://github.com/leejet/stable-diffusion.cpp
         
         if [ -d "stable-diffusion.cpp" ]; then
             print_color "BOLD_GREEN" "Repository cloned successfully!" "success"

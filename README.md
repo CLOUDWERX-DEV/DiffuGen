@@ -27,6 +27,13 @@
   - [Default Parameters by Model](#default-parameters-by-model)
   - [Asking a LLM to Generate Images](#asking-a-llm-to-generate-images)
   - [Parameter Reference](#parameter-reference)
+- [Command Line Usage](#-command-line-usage)
+  - [Basic Command Line Syntax](#basic-command-line-syntax)
+  - [Command Line Parameters](#command-line-parameters)
+  - [Command Line Examples](#command-line-examples)
+  - [Model-Specific Parameter Recommendations](#model-specific-parameter-recommendations)
+  - [Default Parameter Changes](#default-parameter-changes)
+  - [Command Line Usage Notes](#command-line-usage-notes)
 - [Configuration](#-configuration)
 - [Troubleshooting](#-troubleshooting)
 - [Advanced Usage](#-advanced-usage)
@@ -369,138 +376,240 @@ Create an illustration of a fantasy character with model=sd15, width=512, height
 | `steps` | Number of diffusion steps | Model-specific | 1-100 |
 | `cfg_scale` | CFG scale parameter | Model-specific | 0-20 |
 | `seed` | Seed for reproducibility | -1 (random) | Any integer, -1 for random |
-| `sampling_method` | Sampling method | `euler_a` | `euler`, `euler_a`, `heun`, `dpm2`, `dpm++2s_a`, `dpm++2m`, `dpm++2mv2`, `lcm` |
+| `sampling_method` | Sampling method | `euler` | `euler`, `euler_a`, `heun`, `dpm2`, `dpm++2s_a`, `dpm++2m`, `dpm++2mv2`, `lcm` |
 | `negative_prompt` | Elements to avoid | `""` | Any text |
 
-## ⚙️ Configuration
+## 🖥️ Command Line Usage
 
-### Environment Variables
+DiffuGen can be used directly from the command line to generate images without needing to interact with an MCP client. This is useful for scripting, batch processing, or when you want to quickly generate images without opening an IDE.
 
-DiffuGen supports the following environment variables:
+### Basic Command Line Syntax
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `SD_CPP_PATH` | Path to stable-diffusion.cpp | `./stable-diffusion.cpp` |
-| `DIFFUGEN_OUTPUT_DIR` | Where images are saved | Current directory |
-| `CUDA_VISIBLE_DEVICES` | CUDA devices to use | `0` |
-
-### Resource Configuration
-
-You can configure resource usage in the `diffugen.json` file:
-
-```json
-"resources": {
-  "models_dir": "./stable-diffusion.cpp/models",
-  "output_dir": "./outputs",
-  "vram_usage": "adaptive"
-}
-```
-
-- `models_dir`: Directory where models are stored
-- `output_dir`: Directory where generated images are saved
-- `vram_usage`: VRAM usage profile (`low`, `medium`, `high`, or `adaptive`)
-
-## 🔍 Troubleshooting
-
-### Common Issues
-
-#### MCP Server Not Connecting
-- Check paths in your MCP configuration
-- Ensure diffugen.sh has executable permissions
-- Verify Python environment is correctly activated
-- Check log files for detailed error information
-
-#### CUDA Errors
-- Verify CUDA installation with `nvidia-smi`
-- Try reducing model size or using CPU-only mode
-- For low VRAM GPUs, try using `--vae-tiling`, `--vae-on-cpu`, and `--clip-on-cpu` options
-
-#### Missing Models
-- Run the setup script again to download missing models
-- Check that all required files are in the correct locations
-- Verify model filenames match those expected in the code
-
-#### Poor Image Quality
-- Increase the number of steps (e.g., from 20 to 30 or 50)
-- Try different sampling methods (e.g., dpm++2m often gives good results)
-- Adjust the CFG scale (higher for more prompt adherence)
-- Use a more detailed prompt with specific style references
-
-### Log Files
-
-Logs are stored in the following locations:
-- Build logs: `stable-diffusion.cpp/build/build.log`
-- Runtime logs: `diffugen_debug.log`
-
-## 🔮 Advanced Usage
-
-### Custom Model Integration
-
-DiffuGen can be extended to support additional models:
-
-1. Add your model file to the models directory
-2. Modify the MODEL_PATHS dictionary in diffugen.py to include your new model
-3. Add any supporting files (VAE, CLIP, etc.) needed for your model
-
-Example modification to diffugen.py:
-
-```python
-MODEL_PATHS = {
-    "flux-schnell": os.path.join(sd_cpp_path, "models", "flux", "flux-1-schnell.Q8_0.gguf"),
-    "flux-dev": os.path.join(sd_cpp_path, "models", "flux", "flux-dev.Q8_0.gguf"),
-    "sdxl": os.path.join(sd_cpp_path, "models", "sdxl-1.0-base.safetensors"),
-    "sd3": os.path.join(sd_cpp_path, "models", "sd3-medium.safetensors"),
-    "sd15": os.path.join(sd_cpp_path, "models", "v1-5-pruned-emaonly.safetensors"),
-    "my-custom-model": os.path.join(sd_cpp_path, "models", "my-custom-model.safetensors")
-}
-```
-
-### Command Line Usage
-
-You can also use DiffuGen directly from the command line:
+The basic syntax for generating images from the command line is:
 
 ```bash
-./diffugen.sh "A beautiful sunset over mountains" --model flux-dev --width 1024 --height 768 --steps 30 --cfg-scale 7 --seed 42
+./diffugen.sh "Your prompt here" [options]
 ```
 
-Or using the Python script directly:
+For example:
+```bash
+./diffugen.sh "A futuristic cityscape with flying cars"
+```
+
+This will generate an image using the default parameters (flux-schnell model, 512x512 resolution, etc.) and save it to the configured output directory.
+
+### Command Line Parameters
+
+All the parameters available in the MCP interface can also be specified on the command line:
+
+| Parameter | Command Line Flag | Example |
+|-----------|------------------|---------|
+| Model | `--model` | `--model sdxl` |
+| Width | `--width` | `--width 1024` |
+| Height | `--height` | `--height 768` |
+| Steps | `--steps` | `--steps 30` |
+| CFG Scale | `--cfg-scale` | `--cfg-scale 7.0` |
+| Seed | `--seed` | `--seed 42` |
+| Sampling Method | `--sampling-method` | `--sampling-method dpm++2m` |
+| Negative Prompt | `--negative-prompt` | `--negative-prompt "blurry, low quality"` |
+| Output Directory | `--output-dir` | `--output-dir "./my_images"` |
+
+### Command Line Examples
+
+#### Generate an image with default settings:
+```bash
+./diffugen.sh "A beautiful mountain landscape"
+```
+
+#### Generate an image with a specific model:
+```bash
+./diffugen.sh "A medieval castle with dragons" --model sdxl
+```
+
+#### Generate with custom dimensions:
+```bash
+./diffugen.sh "A portrait of a cyberpunk character" --width 768 --height 1024
+```
+
+#### Generate with full parameter control:
+```bash
+./diffugen.sh "A steampunk airship floating above Victorian London" \
+  --model sd15 \
+  --width 1024 \
+  --height 512 \
+  --steps 30 \
+  --cfg-scale 7.5 \
+  --sampling-method dpm++2m \
+  --seed 12345 \
+  --negative-prompt "blurry, low quality, distorted"
+```
+
+### Model-Specific Parameter Recommendations
+
+For best results when using specific models via command line:
+
+#### Flux Models (flux-schnell, flux-dev)
+```bash
+# Flux-Schnell (fastest)
+./diffugen.sh "Vibrant colorful abstract painting" \
+  --model flux-schnell \
+  --cfg-scale 1.0 \
+  --sampling-method euler \
+  --steps 8
+
+# Flux-Dev (better quality)
+./diffugen.sh "Detailed fantasy landscape with mountains and castles" \
+  --model flux-dev \
+  --cfg-scale 1.0 \
+  --sampling-method euler \
+  --steps 20
+```
+
+#### Standard SD Models (sdxl, sd3, sd15)
+```bash
+# SDXL (highest quality)
+./diffugen.sh "Hyperrealistic portrait of a Celtic warrior" \
+  --model sdxl \
+  --cfg-scale 7.0 \
+  --sampling-method dpm++2m \
+  --steps 30
+
+# SD15 (classic model)
+./diffugen.sh "Photorealistic landscape at sunset" \
+  --model sd15 \
+  --cfg-scale 7.0 \
+  --sampling-method euler_a \
+  --steps 20
+```
+
+### Default Parameter Changes
+
+The command-line interface of DiffuGen has been optimized with sensible defaults:
+
+- Default Model: `flux-schnell` (fastest model)
+- Default Sampling Method: `euler` (best for Flux models)
+- Default CFG Scale: `1.0` (optimal for Flux models)
+- Default Steps: `8` for flux-schnell, `20` for other models
+- Default Dimensions: 512x512 pixels
+
+### Command Line Usage Notes
+
+- Generated images are saved to the configured output directory with filenames based on timestamp and parameters
+- You can generate multiple images in sequence by running the command multiple times
+- For batch processing, consider creating a shell script that calls DiffuGen with different parameters
+- To see all available command-line options, run `./diffugen.sh --help`
+- The same engine powers both the MCP interface and command-line tool, so quality and capabilities are identical
+
+## 📃 Advanced Usage
+
+The DiffuGen Python module can be imported and used programmatically in your own Python scripts:
 
 ```python
-from diffugen import generate_stable_diffusion_image
+from diffugen import generate_image
 
-result = generate_stable_diffusion_image(
-    prompt="a beautiful sunset over mountains",
-    model="flux-dev",
+# Generate an image programmatically
+result = generate_image(
+    prompt="A starry night over a quiet village",
+    model="sdxl",
     width=1024,
     height=768,
     steps=30,
-    cfg_scale=1.0,
-    seed=42
+    cfg_scale=7.0,
+    seed=42,
+    sampling_method="dpm++2m",
+    negative_prompt="blurry, low quality"
 )
-print(f"Image generated at: {result['image_path']}")
+
+print(f"Image saved to: {result['file_path']}")
 ```
 
-### Performance Optimization
+## 🔍 Troubleshooting
 
-For optimal performance:
+### Common Issues and Solutions
 
-- Use CUDA acceleration when available
-- Adjust `vram_usage` based on your GPU
-- For low VRAM GPUs, use the following options:
-  - `--vae-tiling`
-  - `--vae-on-cpu`
-  - `--clip-on-cpu`
-  - `--diffusion-fa`
+1. **Missing models or incorrect paths**
+   - Ensure all model files are downloaded and placed in the correct directories
+   - Check that paths in the configuration file are correctly set
+   - Verify file permissions allow read access to model files
 
-### Batch Processing
+2. **CUDA/GPU issues**
+   - Make sure your NVIDIA drivers are up-to-date
+   - Set `CUDA_VISIBLE_DEVICES` to target a specific GPU
+   - If running out of VRAM, try using a smaller model or reducing dimensions
 
-To generate multiple images with different prompts:
+3. **Image quality issues**
+   - Increase steps for better quality (at the cost of generation time)
+   - Adjust CFG scale: higher for more prompt adherence, lower for creativity
+   - Try different sampling methods (dpm++2m often provides good results)
+   - Use more detailed prompts with specific style descriptions
 
-```bash
-./batch_generate.sh prompts.txt --model flux-dev --width 512 --height 512
+4. **File permission errors**
+   - Ensure the output directory is writable by the user running DiffuGen
+   - Check that all scripts have execution permissions (`chmod +x diffugen.sh`)
+
+### Getting Help
+
+If you encounter issues not covered here, you can:
+- Check the GitHub repository for issues and solutions
+- Run with debug logging enabled: `DEBUG=1 ./diffugen.sh "your prompt"`
+- Contact the developers via GitHub issues
+
+## 📝 Configuration
+
+DiffuGen can be configured via the `diffugen.json` file in the root directory:
+
+```json
+{
+  "sd_cpp_path": "/path/to/stable-diffusion.cpp",
+  "models_dir": "/path/to/stable-diffusion.cpp/models",
+  "output_dir": "/path/to/outputs",
+  "default_model": "flux-schnell",
+  "vram_usage": "adaptive",
+  "gpu_layers": -1,
+  "default_params": {
+    "width": 512,
+    "height": 512,
+    "steps": {
+      "flux-schnell": 8,
+      "flux-dev": 20,
+      "sdxl": 20,
+      "sd3": 20,
+      "sd15": 20
+    },
+    "cfg_scale": {
+      "flux-schnell": 1.0,
+      "flux-dev": 1.0,
+      "sdxl": 7.0,
+      "sd3": 7.0,
+      "sd15": 7.0
+    },
+    "sampling_method": "euler"
+  }
+}
 ```
 
-Where `prompts.txt` contains one prompt per line.
+### Configuration Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `sd_cpp_path` | Path to stable-diffusion.cpp directory | Required |
+| `models_dir` | Path to models directory | `${sd_cpp_path}/models` |
+| `output_dir` | Path where generated images are saved | `./outputs` |
+| `default_model` | Default model to use when not specified | `flux-schnell` |
+| `vram_usage` | VRAM usage policy | `adaptive` |
+| `gpu_layers` | Number of layers to offload to GPU (-1 for auto) | `-1` |
+| `default_params` | Default parameters for image generation | See above |
+
+## 🌟 Contributing
+
+Contributions to DiffuGen are welcome! To contribute:
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Submit a pull request
+
+Please ensure your code follows the project's coding standards and includes appropriate tests.
 
 ## 📄 License
 
