@@ -1,7 +1,7 @@
 # DiffuGen - Advanced Local Image Generator with MCP Integration
 
 <p align="center">
-  <img src="diffugen.png" alt="DiffuGen Logo" width="200"/>
+  <img src="diffugen.png" alt="DiffuGen Logo" width="400"/>
 </p>
 
 <p align="center">
