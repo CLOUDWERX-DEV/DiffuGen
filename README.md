@@ -15,7 +15,7 @@
   <a href="https://github.com/CLOUDWERX-DEV/diffugen/blob/master/LICENSE"><img src="https://img.shields.io/github/license/CLOUDWERX-DEV/diffugen" alt="License Badge"/></a>
 </p>
 
-> ⭐ **New**: Now includes OpenAPI server support and OpenWebUI Tools integration for seamless image generation and display in chat interfaces!
+> ⭐ **New**: Now includes OpenAPI server support and OpenWebUI OpenAPI Tools (OWUI Version 0.60.0 Required) integration for seamless image generation and display in chat interfaces!
 
 ## 📃 Table of Contents
 
