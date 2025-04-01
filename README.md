@@ -35,6 +35,7 @@
   - [Command Line Usage Notes](#command-line-usage-notes)
 - [Configuration](#️-configuration)
   - [OpenAPI Server Configuration](#openapi-server-configuration)
+  - [OpenAPI Configuration File](#openapi-configuration-file)
   - [MCP Configuration File Structure](#mcp-configuration-file-structure)
   - [Key Configuration Elements](#key-configuration-elements)
   - [IDE-Specific Options](#ide-specific-options)
@@ -577,6 +578,49 @@ The OpenAPI server uses the same configuration as the main DiffuGen server, but 
 - Port configuration (default: 5199)
 - CORS settings
 - Rate limiting
+
+#### OpenAPI Configuration File
+
+DiffuGen's OpenAPI server can be configured using a dedicated configuration file called `openapi_config.json`. This file provides detailed control over server behavior, model settings, and integration options.
+
+The configuration file is searched for in the following locations:
+1. `openapi_config.json` in the DiffuGen root directory
+2. Custom config file path specified with `--config` command line option
+3. Environment variables for specific settings
+
+A typical OpenAPI configuration file includes sections for:
+- Server settings (host, port, debug mode)
+- Path configurations (models, outputs)
+- Hardware settings (VRAM usage, GPU layers)
+- CORS and security options
+- Default parameters for different models
+- Rate limiting configuration
+
+Example OpenAPI configuration file:
+```json
+{
+  "server": {
+    "host": "0.0.0.0",
+    "port": 5199,
+    "debug": false
+  },
+  "paths": {
+    "sd_cpp_path": "stable-diffusion.cpp",
+    "models_dir": "stable-diffusion.cpp/models",
+    "output_dir": "outputs"
+  },
+  "hardware": {
+    "vram_usage": "adaptive",
+    "cuda_device": "0"
+  },
+  "cors": {
+    "allow_origins": ["*"]
+  },
+  "default_model": "flux-schnell"
+}
+```
+
+For complete details on all available configuration options, refer to the [OpenAPI Integration Guide](OPENAPI_SETUP.md).
 
 ### MCP Configuration File Structure
 
