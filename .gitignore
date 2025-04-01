@@ -35,6 +35,7 @@ outputs/
 results/
 generated/
 samples/
+output/
 
 # Logs and databases
 *.log

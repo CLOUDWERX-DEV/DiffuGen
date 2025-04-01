@@ -1,0 +1,72 @@
+{
+  "server": {
+    "host": "0.0.0.0",
+    "port": 5199,
+    "cors": {
+      "origins": ["*"],
+      "methods": ["GET", "POST"]
+    },
+    "rate_limit": "60/minute"
+  },
+  "paths": {
+    "sd_cpp_path": "path/to/stable-diffusion.cpp",
+    "models_dir": "path/to/stable-diffusion.cpp/models",
+    "output_dir": "path/to/outputs"
+  },
+  "environment": {
+    "CUDA_VISIBLE_DEVICES": "0",
+    "VRAM_USAGE": "adaptive"
+  },
+  "models": {
+    "flux": {
+      "flux-schnell": {
+        "path": "flux/flux-1-schnell.Q8_0.gguf",
+        "default_steps": 8,
+        "default_cfg_scale": 1.0,
+        "default_sampling_method": "euler"
+      },
+      "flux-dev": {
+        "path": "flux/flux1-dev-Q8_0.gguf",
+        "default_steps": 20,
+        "default_cfg_scale": 1.0,
+        "default_sampling_method": "euler"
+      }
+    },
+    "stable_diffusion": {
+      "sdxl": {
+        "path": "sdxl-1.0-base.safetensors",
+        "vae_path": "sdxl_vae-fp16-fix.safetensors",
+        "default_steps": 20,
+        "default_cfg_scale": 7.0,
+        "default_sampling_method": "euler"
+      },
+      "sd3": {
+        "path": "sd3-medium.safetensors",
+        "default_steps": 20,
+        "default_cfg_scale": 7.0,
+        "default_sampling_method": "euler"
+      },
+      "sd15": {
+        "path": "sd15.safetensors",
+        "default_steps": 20,
+        "default_cfg_scale": 7.0,
+        "default_sampling_method": "euler"
+      }
+    }
+  },
+  "defaults": {
+    "width": 512,
+    "height": 512,
+    "seed": -1
+  },
+  "validation": {
+    "min_width": 256,
+    "max_width": 2048,
+    "min_height": 256,
+    "max_height": 2048,
+    "min_steps": 1,
+    "max_steps": 100,
+    "min_cfg_scale": 0.1,
+    "max_cfg_scale": 30.0
+  }
+} 

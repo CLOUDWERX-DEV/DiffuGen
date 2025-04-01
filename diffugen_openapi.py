@@ -17,18 +17,26 @@ from diffugen import generate_stable_diffusion_image, generate_flux_image, load_
 # Convert paths to Path objects for better cross-platform compatibility
 SD_CPP_PATH = Path(sd_cpp_path)
 
-# Get output directory from environment variable or use default
-output_dir = os.environ.get("DIFFUGEN_OUTPUT_DIR", "/output")
-DEFAULT_OUTPUT_DIR = Path(output_dir)
+# Set default output directory
+DEFAULT_OUTPUT_DIR = Path("/output")
 
-# Ensure output directory exists
+# Try to create output directory with better error handling
 try:
-    DEFAULT_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-except Exception as e:
-    print(f"Warning: Could not create output directory: {e}")
-    # Fallback to current directory if specified directory is not accessible
+    os.makedirs(DEFAULT_OUTPUT_DIR, exist_ok=True)
+except PermissionError:
+    print(f"Warning: Could not create output directory at {DEFAULT_OUTPUT_DIR} due to permission error")
+    print("Falling back to creating 'output' directory in current working directory")
     DEFAULT_OUTPUT_DIR = Path.cwd() / "output"
-    DEFAULT_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    try:
+        os.makedirs(DEFAULT_OUTPUT_DIR, exist_ok=True)
+    except Exception as e:
+        print(f"Error: Could not create fallback output directory: {e}")
+        print("Please ensure you have write permissions in the current directory")
+        sys.exit(1)
+except Exception as e:
+    print(f"Error: Could not create output directory: {e}")
+    print("Please check your system permissions and try again")
+    sys.exit(1)
 
 # Set environment variable for DiffuGen functions
 os.environ["DIFFUGEN_OUTPUT_DIR"] = str(DEFAULT_OUTPUT_DIR)
@@ -72,11 +80,8 @@ app.add_middleware(
     allow_headers=["*"],  # Allows all headers
 )
 
-# Mount static files directory for serving generated images
-# Use absolute path and ensure it exists
-static_dir = DEFAULT_OUTPUT_DIR.absolute()
-static_dir.mkdir(parents=True, exist_ok=True)
-app.mount("/images", StaticFiles(directory=str(static_dir)), name="images")
+# Mount the output directory for serving generated images
+app.mount("/images", StaticFiles(directory=str(DEFAULT_OUTPUT_DIR)), name="images")
 
 # Error response model
 class ErrorResponse(BaseModel):
@@ -148,7 +153,7 @@ class ImageGenerationRequest(BaseModel):
     output_dir: Optional[str] = Field(None, description="Output directory for generated images")
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "prompt": "a beautiful sunset over mountains",
                 "model": "sdxl",
