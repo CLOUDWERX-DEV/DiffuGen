@@ -15,7 +15,9 @@
   <a href="https://github.com/CLOUDWERX-DEV/diffugen/blob/master/LICENSE"><img src="https://img.shields.io/github/license/CLOUDWERX-DEV/diffugen" alt="License Badge"/></a>
 </p>
 
-## 📋 Table of Contents
+> ⭐ **New**: Now includes OpenAPI server support and OpenWebUI Tools integration for seamless image generation and display in chat interfaces!
+
+## 📃 Table of Contents
 
 - [Introduction](#-introduction)
 - [Understanding MCP and DiffuGen](#-understanding-mcp-and-diffugen)
@@ -24,6 +26,7 @@
 - [Installation](#-installation)
 - [IDE Setup Instructions](#-ide-setup-instructions)
 - [Usage](#-usage)
+  - [OpenAPI Server Usage](#openapi-server-usage)
   - [Default Parameters by Model](#default-parameters-by-model)
   - [Asking a LLM to Generate Images](#asking-a-llm-to-generate-images)
   - [Parameter Reference](#parameter-reference)
@@ -31,6 +34,7 @@
   - [Default Parameter Changes](#default-parameter-changes)
   - [Command Line Usage Notes](#command-line-usage-notes)
 - [Configuration](#️-configuration)
+  - [OpenAPI Server Configuration](#openapi-server-configuration)
   - [MCP Configuration File Structure](#mcp-configuration-file-structure)
   - [Key Configuration Elements](#key-configuration-elements)
   - [IDE-Specific Options](#ide-specific-options)
@@ -38,6 +42,7 @@
   - [Customizing Default Parameters](#customizing-default-parameters)
   - [Updating Configuration Files](#updating-configuration-files)
 - [Advanced Usage](#-advanced-usage)
+  - [Using the OpenAPI Server](#using-the-openapi-server)
 - [License](#-license)
 - [Acknowledgments](#-acknowledgments)
 - [Contact](#-contact)
@@ -96,6 +101,7 @@ This allows DiffuGen to provide high-quality image generation with exceptional p
 
 - **Multiple Model Support**: Generate images using various models including Flux Schnell, Flux Dev, SDXL, SD3, and SD1.5
 - **MCP Integration**: Seamlessly integrates with IDEs that support MCP (Cursor, Windsurf, Roo Code, Cline, etc.)
+- **OpenAPI Server**: Additional REST API interface for direct HTTP access to image generation capabilities
 - **Cross-Platform**: Works on Linux, macOS, and Windows (via native or WSL)
 - **Parameter Control**: Fine-tune your generations with controls for:
   - Image dimensions (width/height)
@@ -343,6 +349,64 @@ python -m diffugen
 
 You should see: `DiffuGen ready` when the server is successfully started.
 
+### OpenAPI Server Usage
+
+The OpenAPI server provides a REST API interface for direct HTTP access to DiffuGen's image generation capabilities. This is in addition to the MCP integration and can be useful for:
+- Direct HTTP API access
+- Integration with other tools that don't support MCP
+- Custom applications that need programmatic access
+
+For detailed setup instructions and advanced configuration options, see the [OpenAPI Integration Guide](OPENAPI_SETUP.md).
+
+To start the OpenAPI server:
+```bash
+python diffugen_openapi.py
+```
+
+The server can be configured to use a different host or port if needed. By default, it runs on:
+- Host: 0.0.0.0
+- Port: 8080
+
+The server will be available at http://0.0.0.0:8080 with interactive documentation at http://0.0.0.0:8080/docs.
+
+Generated images are saved to the `/output` directory by default. If this directory is not accessible, the server will automatically create an `output` directory in the current working directory. Images are served through the `/images` endpoint.
+
+#### OpenWebUI Integration
+
+1. Open OpenWebUI Settings (gear icon)
+2. Navigate to the "Tools" section
+3. Click the "+" button to add a new tool server
+4. Enter the following details:
+   - URL: http://0.0.0.0:5199
+   - API Key: (leave empty)
+5. Click "Save"
+
+Once added, DiffuGen will appear in the available tools list when clicking the tools icon in the chat interface. The following endpoints will be available:
+- `generate_stable_image_generate_stable_post`: Generate with Stable Diffusion
+- `generate_flux_image_endpoint_generate_flux_post`: Generate with Flux Models
+- `list_models_models_get`: List Available Models
+
+Example using curl:
+```bash
+curl -X POST "http://0.0.0.0:5199/generate/flux" \
+     -H "Content-Type: application/json" \
+     -d '{"prompt": "A beautiful sunset", "model": "flux-schnell"}'
+```
+
+Example using Python requests:
+```python
+import requests
+
+response = requests.post(
+    "http://0.0.0.0:5199/generate/flux",
+    json={
+        "prompt": "A beautiful sunset",
+        "model": "flux-schnell"
+    }
+)
+result = response.json()
+```
+
 ### Default Parameters by Model
 
 Each model has specific default parameters optimized for best results:
@@ -506,6 +570,13 @@ When using the command line, you don't need to specify these parameters unless y
 ## ⚙️ Configuration
 
 DiffuGen provides a template JSON configuration file (`diffugen.json`) that defines server settings, environment variables, and resource paths. This template should be copied into your IDE's MCP configuration file. This section explains the various configuration options available.
+
+### OpenAPI Server Configuration
+
+The OpenAPI server uses the same configuration as the main DiffuGen server, but with additional options:
+- Port configuration (default: 5199)
+- CORS settings
+- Rate limiting
 
 ### MCP Configuration File Structure
 
@@ -674,6 +745,35 @@ result = generate_image(
 )
 
 print(f"Image saved to: {result['file_path']}")
+```
+
+### Using the OpenAPI Server
+
+You can also use the OpenAPI server programmatically in your applications:
+
+```python
+import requests
+
+def generate_image_via_api(prompt, model="flux-schnell", width=512, height=512):
+    response = requests.post(
+        "http://0.0.0.0:5199/generate/flux",
+        json={
+            "prompt": prompt,
+            "model": model,
+            "width": width,
+            "height": height
+        }
+    )
+    return response.json()
+
+# Example usage
+result = generate_image_via_api(
+    prompt="A magical forest at night",
+    model="flux-schnell",
+    width=768,
+    height=512
+)
+print(f"Generated image: {result['file_path']}")
 ```
 
 ## 🔍 Troubleshooting
