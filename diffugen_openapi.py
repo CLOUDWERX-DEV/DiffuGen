@@ -14,6 +14,7 @@ import argparse
 from pathlib import Path
 from datetime import datetime
 from collections import defaultdict
+from itertools import chain
 
 # Import DiffuGen functions
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -351,7 +352,7 @@ async def list_images():
     """List all generated images"""
     try:
         images = []
-        for file in DEFAULT_OUTPUT_DIR.glob("*.[jp][pn][g]") + DEFAULT_OUTPUT_DIR.glob("*.jpeg"):
+        for file in chain(DEFAULT_OUTPUT_DIR.glob("*.[jp][pn][g]"), DEFAULT_OUTPUT_DIR.glob("*.jpeg")):
             images.append({
                 "filename": file.name,
                 "path": f"{config['images']['serve_path']}/{file.name}",

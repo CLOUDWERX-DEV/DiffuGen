@@ -99,3 +99,9 @@ stable-diffusion.cpp/
 .docs/
 diffugen_debug.log
 diffugen_openapi.log
+tests/
+
+# Don't exclude our tests directory
+tests/__pycache__/
+run_tests.sh
+test.yml
