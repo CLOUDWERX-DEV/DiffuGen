@@ -208,8 +208,8 @@ stable-diffusion.cpp/models/
 ├── ae.sft                           # VAE model
 ├── clip_l.safetensors               # CLIP model
 ├── flux/
-│   ├── flux-1-schnell.Q8_0.gguf     # Flux Schnell model (default)
-│   └── flux-dev.Q8_0.gguf           # Flux Dev model
+│   ├── flux1-schnell-q8_0.gguf     # Flux Schnell model (default)
+│   └── flux1-dev-q8_0.gguf          # Flux Dev model
 ├── sd3-medium.safetensors           # SD3 model
 ├── sdxl-1.0-base.safetensors        # SDXL model
 ├── sdxl_vae-fp16-fix.safetensors    # SDXL VAE

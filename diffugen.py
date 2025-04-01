@@ -171,8 +171,8 @@ def get_model_path(model_name):
         # Initialize paths only on first access
         models_dir = config["models_dir"]
         _model_paths.update({
-            "flux-schnell": os.path.join(models_dir, "flux", "flux-1-schnell.Q8_0.gguf"),
-            "flux-dev": os.path.join(models_dir, "flux", "flux1-dev-Q8_0.gguf"),
+            "flux-schnell": os.path.join(models_dir, "flux", "flux1-schnell-q8_0.gguf"),
+            "flux-dev": os.path.join(models_dir, "flux", "flux1-dev-q8_0.gguf"),
             "sdxl": os.path.join(models_dir, "sdxl-1.0-base.safetensors"),
             "sd3": os.path.join(models_dir, "sd3-medium.safetensors"),
             "sd15": os.path.join(models_dir, "sd15.safetensors"),

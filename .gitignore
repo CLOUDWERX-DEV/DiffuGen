@@ -98,3 +98,4 @@ stable-diffusion.cpp/
 .cursor/
 .docs/
 diffugen_debug.log
+diffugen_openapi.log

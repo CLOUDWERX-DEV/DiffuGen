@@ -1,0 +1,67 @@
+{
+  "server": {
+    "host": "0.0.0.0",
+    "port": 5199,
+    "debug": false
+  },
+  "paths": {
+    "sd_cpp_path": "stable-diffusion.cpp",
+    "models_dir": "stable-diffusion.cpp/models",
+    "output_dir": "outputs"
+  },
+  "hardware": {
+    "vram_usage": "adaptive",
+    "gpu_layers": -1,
+    "cuda_device": "0"
+  },
+  "env": {
+    "CUDA_VISIBLE_DEVICES": "0"
+  },
+  "cors": {
+    "allow_origins": ["*"],
+    "allow_methods": ["GET", "POST", "OPTIONS"],
+    "allow_headers": ["*"]
+  },
+  "rate_limiting": {
+    "rate": "60/minute",
+    "enabled": true
+  },
+  "models": {
+    "flux": ["flux-schnell", "flux-dev"],
+    "stable_diffusion": ["sdxl", "sd3", "sd15"]
+  },
+  "default_model": "flux-schnell",
+  "default_params": {
+    "width": 512,
+    "height": 512,
+    "steps": {
+      "flux-schnell": 8,
+      "flux-dev": 20,
+      "sdxl": 20,
+      "sd3": 20,
+      "sd15": 20
+    },
+    "cfg_scale": {
+      "flux-schnell": 1.0,
+      "flux-dev": 1.0,
+      "sdxl": 7.0,
+      "sd3": 7.0,
+      "sd15": 7.0
+    },
+    "sampling_method": {
+      "flux-schnell": "euler",
+      "flux-dev": "euler",
+      "sdxl": "euler",
+      "sd3": "euler",
+      "sd15": "euler"
+    }
+  },
+  "images": {
+    "serve_path": "/images",
+    "cache_control": "max-age=3600"
+  },
+  "security": {
+    "api_key_required": false,
+    "api_keys": []
+  }
+} 

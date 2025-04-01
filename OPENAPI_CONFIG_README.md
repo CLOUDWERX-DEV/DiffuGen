@@ -1,33 +1,8 @@
-# DiffuGen OpenAPI Integration Guide
+# DiffuGen OpenAPI Configuration Guide
 
-This guide provides detailed instructions for setting up, configuring, and using DiffuGen's OpenAPI server capabilities, enabling integration with OpenWebUI and other OpenAPI-compatible tools.
+This guide explains how to configure the DiffuGen OpenAPI server using the `openapi_config.json` file.
 
-## Prerequisites
-
-- Python 3.11 or newer
-- NVIDIA GPU with CUDA support (recommended)
-- DiffuGen base installation completed
-
-## Installation
-
-1. Install DiffuGen and its dependencies:
-```bash
-git clone https://github.com/CLOUDWERX-DEV/diffugen.git
-cd diffugen
-chmod +x setup_diffugen.sh
-./setup_diffugen.sh
-```
-
-2. Start the OpenAPI server:
-```bash
-python diffugen_openapi.py --port 5199
-```
-
-The server will be available at http://0.0.0.0:5199 with interactive documentation at http://0.0.0.0:5199/docs
-
-## Configuration
-
-### Configuration File Location
+## Configuration File Location
 
 The OpenAPI server looks for configuration in the following locations:
 
@@ -35,7 +10,7 @@ The OpenAPI server looks for configuration in the following locations:
 2. Custom config file path specified with `--config` command line option
 3. Environment variables for specific settings
 
-### Configuration Structure
+## Configuration Structure
 
 The `openapi_config.json` file has the following structure:
 
@@ -109,9 +84,9 @@ The `openapi_config.json` file has the following structure:
 }
 ```
 
-### Configuration Sections
+## Configuration Sections
 
-#### Server Configuration
+### Server Configuration
 
 ```json
 "server": {
@@ -125,7 +100,7 @@ The `openapi_config.json` file has the following structure:
 - `port`: The port the server will listen on (default: `5199`)
 - `debug`: Whether to run in debug mode (default: `false`)
 
-#### Path Configuration
+### Path Configuration
 
 ```json
 "paths": {
@@ -139,7 +114,7 @@ The `openapi_config.json` file has the following structure:
 - `models_dir`: Path to the directory containing model files (if not set, defaults to `{sd_cpp_path}/models`)
 - `output_dir`: Directory where generated images will be saved
 
-#### Hardware Configuration
+### Hardware Configuration
 
 ```json
 "hardware": {
@@ -153,7 +128,7 @@ The `openapi_config.json` file has the following structure:
 - `gpu_layers`: Number of layers to offload to GPU (-1 for auto-detect)
 - `cuda_device`: CUDA device to use for generation
 
-#### Environment Variables
+### Environment Variables
 
 ```json
 "env": {
@@ -167,7 +142,7 @@ The `openapi_config.json` file has the following structure:
   - `"0,1"`: Use both first and second GPUs
   - `"-1"`: Disable CUDA and use CPU only
 
-#### CORS Configuration
+### CORS Configuration
 
 ```json
 "cors": {
@@ -181,7 +156,7 @@ The `openapi_config.json` file has the following structure:
 - `allow_methods`: List of allowed HTTP methods (default: `["GET", "POST", "OPTIONS"]`)
 - `allow_headers`: List of allowed HTTP headers (default: `["*"]` to allow all headers)
 
-#### Rate Limiting
+### Rate Limiting
 
 ```json
 "rate_limiting": {
@@ -193,7 +168,7 @@ The `openapi_config.json` file has the following structure:
 - `rate`: Maximum request rate in format `number/timeunit` (default: `"60/minute"`)
 - `enabled`: Whether rate limiting is enabled (default: `true`)
 
-#### Models Configuration
+### Models Configuration
 
 ```json
 "models": {
@@ -205,7 +180,7 @@ The `openapi_config.json` file has the following structure:
 - `flux`: List of available Flux models
 - `stable_diffusion`: List of available Stable Diffusion models
 
-#### Default Model
+### Default Model
 
 ```json
 "default_model": "flux-schnell"
@@ -213,7 +188,7 @@ The `openapi_config.json` file has the following structure:
 
 - Specifies which model to use when no model is explicitly requested
 
-#### Default Parameters
+### Default Parameters
 
 ```json
 "default_params": {
@@ -250,7 +225,7 @@ This section defines default parameters for generation:
 - `cfg_scale`: Default classifier-free guidance scale for each model
 - `sampling_method`: Default sampling method for each model
 
-#### Images Configuration
+### Images Configuration
 
 ```json
 "images": {
@@ -262,7 +237,7 @@ This section defines default parameters for generation:
 - `serve_path`: URL path where images will be served (default: `"/images"`)
 - `cache_control`: Cache-Control header for served images (default: `"max-age=3600"`)
 
-#### Security Configuration
+### Security Configuration
 
 ```json
 "security": {
@@ -274,7 +249,7 @@ This section defines default parameters for generation:
 - `api_key_required`: Whether API key authentication is required (default: `false`)
 - `api_keys`: List of valid API keys for authentication (default: `[]`)
 
-### Environment Variable Overrides
+## Environment Variable Overrides
 
 You can override configuration settings with environment variables:
 
@@ -287,7 +262,7 @@ You can override configuration settings with environment variables:
 - `VRAM_USAGE`: VRAM usage strategy
 - `GPU_LAYERS`: Number of layers to offload to GPU
 
-### Command Line Options
+## Command Line Options
 
 You can also specify some configuration options via command line:
 
@@ -299,101 +274,7 @@ python diffugen_openapi.py --host 127.0.0.1 --port 8080 --config custom_config.j
 - `--port`: Port to listen on
 - `--config`: Path to a custom configuration file
 
-## OpenWebUI Integration
-
-1. Open OpenWebUI Settings (gear icon)
-2. Navigate to the "Tools" section
-3. Click the "+" button to add a new tool server
-4. Enter the following details:
-   - URL: http://0.0.0.0:5199
-   - API Key: (leave empty)
-5. Click "Save"
-
-Once added, DiffuGen will appear in the available tools list when clicking the tools icon in the chat interface. The following endpoints will be available:
-- `generate_stable_image_generate_stable_post`: Generate with Stable Diffusion
-- `generate_flux_image_endpoint_generate_flux_post`: Generate with Flux Models
-- `list_models_models_get`: List Available Models
-
-## API Endpoints Reference
-
-### 1. Generate Image with Stable Diffusion Models
-
-```http
-POST /generate/stable
-```
-
-Request body:
-```json
-{
-  "prompt": "A beautiful sunset over mountains",
-  "model": "sdxl",
-  "width": 1024,
-  "height": 768,
-  "steps": 30,
-  "cfg_scale": 7.0,
-  "seed": -1,
-  "sampling_method": "dpm++2m",
-  "negative_prompt": "blurry, low quality"
-}
-```
-
-Response:
-```json
-{
-  "file_path": "path/to/generated/image.png",
-  "metadata": {
-    "model": "sdxl",
-    "prompt": "A beautiful sunset over mountains",
-    "generation_time": "1.23s",
-    "parameters": {
-      // Generation parameters used
-    }
-  }
-}
-```
-
-### 2. Generate Image with Flux Models
-
-```http
-POST /generate/flux
-```
-
-Request body:
-```json
-{
-  "prompt": "A cyberpunk cityscape",
-  "model": "flux-schnell",
-  "width": 512,
-  "height": 512,
-  "steps": 8,
-  "cfg_scale": 1.0,
-  "seed": -1,
-  "sampling_method": "euler"
-}
-```
-
-Response: Same structure as Stable Diffusion endpoint
-
-### 3. List Available Models
-
-```http
-GET /models
-```
-
-Response:
-```json
-{
-  "models": {
-    "flux": ["flux-schnell", "flux-dev"],
-    "stable_diffusion": ["sdxl", "sd3", "sd15"],
-    "default_parameters": {
-      // Model-specific default parameters
-    }
-  }
-}
-```
-
-## Advanced Configuration Examples
+## Examples
 
 ### Basic Configuration
 
@@ -455,105 +336,30 @@ Response:
 }
 ```
 
-## Model-Specific Recommendations
+### Custom Model Configuration
 
-### Flux Models
-- **flux-schnell**: Best for rapid prototyping
-  - Default steps: 8
-  - Default cfg_scale: 1.0
-  - Sampling method: euler
-  - Best for: Quick iterations, concept testing
-
-- **flux-dev**: Better quality, slower generation
-  - Default steps: 20
-  - Default cfg_scale: 1.0
-  - Sampling method: euler
-  - Best for: Higher quality generations
-
-### Stable Diffusion Models
-- **sdxl**: Highest quality, largest model
-  - Default steps: 20-30
-  - Default cfg_scale: 7.0
-  - Sampling method: dpm++2m
-  - Best for: Professional quality images
-
-- **sd3**: Good balance of quality and speed
-  - Default steps: 20
-  - Default cfg_scale: 7.0
-  - Sampling method: euler_a
-  - Best for: General purpose generation
-
-- **sd15**: Classic model, reliable results
-  - Default steps: 20
-  - Default cfg_scale: 7.0
-  - Sampling method: euler_a
-  - Best for: Consistent, well-understood results
-
-## Error Handling
-
-The API uses standard HTTP status codes:
-- 200: Successful generation
-- 400: Invalid request parameters
-- 404: Model not found
-- 500: Server error
-
-Error responses include detailed messages:
 ```json
 {
-  "error": "Invalid parameters",
-  "detail": "Width must be between 256 and 2048",
-  "code": "INVALID_DIMENSIONS"
+  "models": {
+    "flux": ["flux-schnell"],
+    "stable_diffusion": ["sdxl"]
+  },
+  "default_model": "sdxl",
+  "default_params": {
+    "width": 1024,
+    "height": 1024,
+    "steps": {
+      "flux-schnell": 12,
+      "sdxl": 30
+    },
+    "cfg_scale": {
+      "flux-schnell": 1.2,
+      "sdxl": 8.0
+    },
+    "sampling_method": {
+      "flux-schnell": "euler",
+      "sdxl": "dpm++2m"
+    }
+  }
 }
-```
-
-## Output Directory Configuration
-
-The server uses the following directory configuration:
-- Default output directory: `/output`
-- Environment variable: `DIFFUGEN_OUTPUT_DIR`
-- Fallback: Creates an `output` directory in the current working directory if the specified directory is not accessible
-
-Generated images are saved to this directory and served through the `/images` endpoint. The full URL for accessing generated images will be: `http://your-server:port/images/filename.png`
-
-## CORS Configuration
-
-By default, CORS is enabled for OpenWebUI integration. You can configure CORS settings:
-
-```python
-# In your environment or configuration
-DIFFUGEN_CORS_ORIGINS="http://localhost:3000,http://localhost:8080"
-DIFFUGEN_CORS_METHODS="GET,POST"
-```
-
-## Troubleshooting
-
-1. **Server won't start**
-   - Check if required models are downloaded
-   - Verify CUDA installation if using GPU
-   - Check port 5199 is available
-   - Verify Python environment is activated
-
-2. **Generation fails**
-   - Check model paths in configuration
-   - Verify GPU memory availability
-   - Try reducing image dimensions or steps
-   - Check server logs for detailed error messages
-
-3. **Poor image quality**
-   - Increase steps (20-30 for better quality)
-   - Adjust cfg_scale (7.0-9.0 for SD models)
-   - Use more detailed prompts
-   - Try different sampling methods
-
-4. **OpenWebUI Integration Issues**
-   - Verify server is running and accessible
-   - Check CORS settings if using a different domain
-   - Ensure URL is correctly formatted in tool settings
-   - Check browser console for error messages
-
-## Support
-
-For issues and questions:
-- GitHub Issues: [CLOUDWERX-DEV/diffugen](https://github.com/CLOUDWERX-DEV/diffugen/issues)
-- Discord: [Join our server](https://discord.gg/SvZFuufNTQ)
-- Email: sysop@cloudwerx.dev 
+``` 

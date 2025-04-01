@@ -20,13 +20,13 @@
   "models": {
     "flux": {
       "flux-schnell": {
-        "path": "flux/flux-1-schnell.Q8_0.gguf",
+        "path": "flux/flux1-schnell-q8_0.gguf",
         "default_steps": 8,
         "default_cfg_scale": 1.0,
         "default_sampling_method": "euler"
       },
       "flux-dev": {
-        "path": "flux/flux1-dev-Q8_0.gguf",
+        "path": "flux/flux1-dev-q8_0.gguf",
         "default_steps": 20,
         "default_cfg_scale": 1.0,
         "default_sampling_method": "euler"
