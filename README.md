@@ -15,7 +15,7 @@
   <a href="https://github.com/CLOUDWERX-DEV/diffugen/blob/master/LICENSE"><img src="https://img.shields.io/github/license/CLOUDWERX-DEV/diffugen" alt="License Badge"/></a>
 </p>
 
-> ⭐ **New**: Now includes OpenAPI server support and OpenWebUI OpenAPI Tools (OWUI Version 0.60.0 Required) integration for seamless image generation and display in chat interfaces!
+> ⭐ **New**: Now includes OpenAPI server support and OpenWebUI OpenAPI Tools (OWUI Version 0.60.0 Required) integration for seamless image generation and display in chat interfaces! The OpenAPI is seperate from the MCP server and allowss for initigrations into your own projects!
 
 ## 📃 Table of Contents
 
@@ -281,16 +281,16 @@ The file contains all necessary settings:
 {
   "mcpServers": {
     "diffugen": {
-      "command": "/full/path/to/DiffuGen/diffugen.sh",
+      "command": "/home/cloudwerxlab/Desktop/Servers/MCP/Tools/DiffuGen/diffugen.sh",
       "args": [],
       "env": {
         "CUDA_VISIBLE_DEVICES": "0",
-        "SD_CPP_PATH": "/full/path/to/DiffuGen/stable-diffusion.cpp",
+        "SD_CPP_PATH": "path/to/stable-diffusion.cpp",
         "default_model": "flux-schnell"
       },
       "resources": {
-        "models_dir": "/full/path/to/DiffuGen/stable-diffusion.cpp/models",
-        "output_dir": "/full/path/to/DiffuGen/outputs",
+        "models_dir": "path/to/stable-diffusion.cpp/models",
+        "output_dir": "path/to/outputs",
         "vram_usage": "adaptive"
       },
       "metadata": {
