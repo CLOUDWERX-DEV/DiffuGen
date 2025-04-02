@@ -65,7 +65,7 @@ If you have an idea for an enhancement, please create an issue on GitHub with th
 1. Clone the repository:
    ```bash
    git clone https://github.com/CLOUDWERX-DEV/diffugen.git
-   cd diffugen
+   cd DiffuGen
    ```
 
 2. Create and activate a virtual environment:

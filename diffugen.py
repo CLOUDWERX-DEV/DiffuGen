@@ -163,39 +163,60 @@ def load_config():
                 for key, value in diffugen_config.items():
                     config[key] = value
                     logging.info(f"Loaded config setting from diffugen.json: {key}")
+            
+                # Extract default_params if they exist
+                if 'mcpServers' in diffugen_config and 'diffugen' in diffugen_config.get('mcpServers', {}):
+                    server_config = diffugen_config['mcpServers']['diffugen']
+                    if 'default_params' in server_config:
+                        config['default_params'] = server_config['default_params']
+                        logging.info("Loaded default_params from diffugen.json")
     except Exception as e:
         logging.warning(f"Error loading diffugen.json configuration: {e}")
     
     # Also check for Cursor MCP config
     try:
-        cursor_mcp_path = os.path.join(os.getcwd(), ".cursor", "mcp.json")
+        cursor_mcp_path = os.path.join(os.path.expanduser("~"), ".cursor", "mcp.json")
+        if not os.path.exists(cursor_mcp_path):
+            cursor_mcp_path = os.path.join(os.getcwd(), ".cursor", "mcp.json")
+        
         if os.path.exists(cursor_mcp_path):
             logging.info(f"Loading configuration from {cursor_mcp_path}")
             with open(cursor_mcp_path, 'r') as f:
                 cursor_config = json.load(f)
                 if ('mcpServers' in cursor_config and 
-                    'diffugen' in cursor_config.get('mcpServers', {}) and 
-                    'resources' in cursor_config.get('mcpServers', {}).get('diffugen', {})):
+                    'diffugen' in cursor_config.get('mcpServers', {})): 
                     
-                    resources = cursor_config['mcpServers']['diffugen']['resources']
-                    if 'output_dir' in resources:
-                        config['output_dir'] = os.path.normpath(resources['output_dir'])
-                        logging.info(f"Using output_dir from MCP config: {config['output_dir']}")
-                    if 'models_dir' in resources:
-                        config['models_dir'] = os.path.normpath(resources['models_dir'])
-                        logging.info(f"Using models_dir from MCP config: {config['models_dir']}")
-                    if 'SD_CPP_PATH' in resources:
-                        config['sd_cpp_path'] = os.path.normpath(resources['SD_CPP_PATH'])
+                    server_config = cursor_config['mcpServers']['diffugen']
+                    
+                    # Check for resources section
+                    if 'resources' in server_config:
+                        resources = server_config['resources']
+                        if 'output_dir' in resources:
+                            config['output_dir'] = os.path.normpath(resources['output_dir'])
+                            logging.info(f"Using output_dir from MCP config: {config['output_dir']}")
+                        if 'models_dir' in resources:
+                            config['models_dir'] = os.path.normpath(resources['models_dir'])
+                            logging.info(f"Using models_dir from MCP config: {config['models_dir']}")
+                        if 'vram_usage' in resources:
+                            config['vram_usage'] = resources['vram_usage']
+                            logging.info(f"Using vram_usage from MCP config: {config['vram_usage']}")
+                        if 'gpu_layers' in resources:
+                            config['gpu_layers'] = resources['gpu_layers']
+                            logging.info(f"Using gpu_layers from MCP config: {config['gpu_layers']}")
+                    
+                    # Look for default_params section
+                    if 'default_params' in server_config:
+                        config['default_params'] = server_config['default_params']
+                        logging.info("Loaded default_params from Cursor MCP config")
+                        
+                    # Look for SD_CPP_PATH in env variables section
+                    if 'env' in server_config and 'SD_CPP_PATH' in server_config['env']:
+                        config['sd_cpp_path'] = os.path.normpath(server_config['env']['SD_CPP_PATH'])
                         logging.info(f"Using sd_cpp_path from MCP config: {config['sd_cpp_path']}")
-                    if 'vram_usage' in resources:
-                        config['vram_usage'] = resources['vram_usage']
-                        logging.info(f"Using vram_usage from MCP config: {config['vram_usage']}")
-                    if 'gpu_layers' in resources:
-                        config['gpu_layers'] = resources['gpu_layers']
-                        logging.info(f"Using gpu_layers from MCP config: {config['gpu_layers']}")
+                        
                     # Look for default_model in environment variables section
-                    if 'env' in cursor_config.get('mcpServers', {}).get('diffugen', {}) and 'default_model' in cursor_config['mcpServers']['diffugen']['env']:
-                        config['default_model'] = cursor_config['mcpServers']['diffugen']['env']['default_model']
+                    if 'env' in server_config and 'default_model' in server_config['env']:
+                        config['default_model'] = server_config['env']['default_model']
                         logging.info(f"Using default_model from MCP config: {config['default_model']}")
     except Exception as e:
         logging.warning(f"Error loading MCP configuration: {e}")
@@ -220,16 +241,48 @@ os.makedirs(default_output_dir, exist_ok=True)
 def get_default_steps(model):
     """Get default steps for a model"""
     model = model.lower()
-    return config["default_params"]["steps"].get(model, 20)
+    # Try to get from model-specific defaults, fall back to general default
+    try:
+        if isinstance(config["default_params"]["steps"], dict):
+            return config["default_params"]["steps"].get(model, 20)
+        else:
+            return config["default_params"].get("steps", 20)
+    except (KeyError, TypeError):
+        logging.warning(f"Could not find default steps for model {model}, using fallback value of 20")
+        return 20
 
 def get_default_cfg_scale(model):
     """Get default CFG scale for a model"""
     model = model.lower()
-    return config["default_params"]["cfg_scale"].get(model, 7.0)
+    # Try to get from model-specific defaults, fall back to general default
+    try:
+        if isinstance(config["default_params"]["cfg_scale"], dict):
+            # For Flux models, default to 1.0, for others default to 7.0
+            default_value = 1.0 if model.startswith("flux-") else 7.0
+            return config["default_params"]["cfg_scale"].get(model, default_value)
+        else:
+            return config["default_params"].get("cfg_scale", 7.0)
+    except (KeyError, TypeError):
+        # For Flux models, default to 1.0, for others default to 7.0
+        default_value = 1.0 if model.startswith("flux-") else 7.0
+        logging.warning(f"Could not find default cfg_scale for model {model}, using fallback value of {default_value}")
+        return default_value
 
-def get_default_sampling_method():
-    """Get default sampling method"""
-    return config["default_params"]["sampling_method"]
+def get_default_sampling_method(model=None):
+    """Get default sampling method, optionally model-specific"""
+    try:
+        # First try to get model-specific sampling method if provided
+        if model and isinstance(config["default_params"]["sampling_method"], dict):
+            model = model.lower()
+            return config["default_params"]["sampling_method"].get(model, "euler")
+        # Otherwise get general default
+        elif isinstance(config["default_params"]["sampling_method"], dict):
+            return config["default_params"]["sampling_method"].get("default", "euler")
+        else:
+            return config["default_params"].get("sampling_method", "euler")
+    except (KeyError, TypeError):
+        logging.warning("Could not find default sampling method, using fallback value of 'euler'")
+        return "euler"
 
 # Lazy-loaded model paths - only resolved when needed
 _model_paths = {}
@@ -337,7 +390,7 @@ def generate_stable_diffusion_image(prompt: str, model: str = None, output_dir: 
             cfg_scale = get_default_cfg_scale(model)
             
         if sampling_method is None:
-            sampling_method = get_default_sampling_method()
+            sampling_method = get_default_sampling_method(model)
         
         if output_dir is None:
             output_dir = default_output_dir
@@ -557,7 +610,7 @@ def generate_flux_image(prompt: str, output_dir: str = None, cfg_scale: float = 
             cfg_scale = get_default_cfg_scale(model)
             
         if sampling_method is None:
-            sampling_method = get_default_sampling_method()
+            sampling_method = get_default_sampling_method(model)
         
         if output_dir is None:
             output_dir = default_output_dir
@@ -716,7 +769,7 @@ if __name__ == "__main__":
             parser.add_argument("--seed", type=int, default=-1, 
                                 help="Seed for reproducibility (-1 for random)")
             parser.add_argument("--sampling-method", type=str, dest="sampling_method", 
-                                default=get_default_sampling_method(), 
+                                default=None, 
                                 help="Sampling method")
             parser.add_argument("--negative-prompt", type=str, dest="negative_prompt", default="", 
                                 help="Negative prompt")
@@ -741,6 +794,8 @@ if __name__ == "__main__":
                 args.steps = get_default_steps(args.model)
             if args.cfg_scale is None:
                 args.cfg_scale = get_default_cfg_scale(args.model)
+            if args.sampling_method is None:
+                args.sampling_method = get_default_sampling_method(args.model)
             
             # Determine which generation function to use based on model
             if args.model.lower().startswith("flux-"):

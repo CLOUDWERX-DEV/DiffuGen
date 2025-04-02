@@ -1352,6 +1352,9 @@ update_file_paths() {
                 cross_platform_sed 's|"models_dir": *"[^"]*"|"models_dir": "'"$models_dir"'"|g' "$file"
                 cross_platform_sed 's|"output_dir": *"[^"]*"|"output_dir": "'"$output_dir"'"|g' "$file"
                 
+                # Update command to use absolute path instead of relative path
+                cross_platform_sed 's|"command": *"[^"]*"|"command": "'"$normalized_path/diffugen.sh"'"|g' "$file"
+                
                 # Update SD_CPP_PATH in the environment section
                 cross_platform_sed 's|"SD_CPP_PATH": *"[^"]*"|"SD_CPP_PATH": "'"$normalized_path/stable-diffusion.cpp"'"|g' "$file"
                 

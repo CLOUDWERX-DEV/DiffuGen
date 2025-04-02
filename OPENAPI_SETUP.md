@@ -13,7 +13,7 @@ This guide provides detailed instructions for setting up, configuring, and using
 1. Install DiffuGen and its dependencies:
 ```bash
 git clone https://github.com/CLOUDWERX-DEV/diffugen.git
-cd diffugen
+cd DiffuGen
 chmod +x setup_diffugen.sh
 ./setup_diffugen.sh
 ```

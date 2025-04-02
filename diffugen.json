@@ -1,11 +1,12 @@
 {
   "mcpServers": {
     "diffugen": {
-      "command": "path/to/diffugen.sh",
+      "command": "/home/cloudwerxlab/Desktop/Servers/MCP/Tools/DiffuGen/diffugen.sh",
       "args": [],
       "env": {
         "CUDA_VISIBLE_DEVICES": "0",
-        "SD_CPP_PATH": "path/to/stable-diffusion.cpp"
+        "SD_CPP_PATH": "path/to/stable-diffusion.cpp",
+        "default_model": "flux-schnell"
       },
       "resources": {
         "models_dir": "path/to/stable-diffusion.cpp/models",

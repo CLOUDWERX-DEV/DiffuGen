@@ -146,7 +146,7 @@ The easiest way to install DiffuGen is using the provided setup script:
 
 ```bash
 git clone https://github.com/CLOUDWERX-DEV/diffugen.git
-cd diffugen
+cd DiffuGen
 chmod +x diffugen.sh
 chmod +x setup_diffugen.sh
 ./setup_diffugen.sh
@@ -169,7 +169,7 @@ If you prefer to install manually, follow these steps:
 
 ```bash
 git clone https://github.com/CLOUDWERX-DEV/diffugen.git
-cd diffugen
+cd DiffuGen
 git clone --recursive https://github.com/leejet/stable-diffusion.cpp
 ```
 
@@ -269,7 +269,7 @@ Edit the `diffugen.py` script to update the `sd_cpp_path` variable to point to y
 
 ```python
 # Example path update in diffugen.py
-sd_cpp_path = os.path.normpath("/full/path/to/diffugen/stable-diffusion.cpp")
+sd_cpp_path = os.path.normpath("/full/path/to/DiffuGen/stable-diffusion.cpp")
 ```
 
 6. Create an MCP configuration file to use with your IDE:
