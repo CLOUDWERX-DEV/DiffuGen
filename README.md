@@ -218,6 +218,45 @@ stable-diffusion.cpp/models/
 └── v1-5-pruned-emaonly.safetensors  # SD1.5 model
 ```
 
+You can download the models from the following sources:
+
+```bash
+# Create model directories
+mkdir -p stable-diffusion.cpp/models/flux
+
+# Flux models
+# Flux Schnell - Fast generation model (requires t5xxl, clip-l, vae)
+curl -L https://huggingface.co/leejet/FLUX.1-schnell-gguf/resolve/main/flux1-schnell-q8_0.gguf -o stable-diffusion.cpp/models/flux/flux1-schnell-q8_0.gguf
+
+# Flux Dev - Development model with better quality (requires t5xxl, clip-l, vae)
+curl -L https://huggingface.co/leejet/FLUX.1-dev-gguf/resolve/main/flux1-dev-q8_0.gguf -o stable-diffusion.cpp/models/flux/flux1-dev-q8_0.gguf
+
+# Required models for Flux
+# T5XXL Text Encoder
+curl -L https://huggingface.co/Sanami/flux1-dev-gguf/resolve/main/t5xxl_fp16.safetensors -o stable-diffusion.cpp/models/t5xxl_fp16.safetensors
+
+# CLIP-L Text Encoder
+curl -L https://huggingface.co/Sanami/flux1-dev-gguf/resolve/main/clip_l.safetensors -o stable-diffusion.cpp/models/clip_l.safetensors
+
+# VAE for image decoding
+curl -L https://huggingface.co/pretentioushorsefly/flux-models/resolve/main/models/vae/ae.safetensors -o stable-diffusion.cpp/models/ae.sft
+
+# Stable Diffusion models
+# SDXL 1.0 Base Model (requires sdxl-vae)
+curl -L https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0/resolve/main/sd_xl_base_1.0.safetensors -o stable-diffusion.cpp/models/sd_xl_base_1.0.safetensors
+
+# SDXL VAE (required for SDXL)
+curl -L https://huggingface.co/madebyollin/sdxl-vae-fp16-fix/resolve/main/sdxl_vae-fp16-fix.safetensors -o stable-diffusion.cpp/models/sdxl_vae-fp16-fix.safetensors
+
+# Stable Diffusion 1.5 (standalone)
+curl -L https://huggingface.co/runwayml/stable-diffusion-v1-5/resolve/main/v1-5-pruned-emaonly.safetensors -o stable-diffusion.cpp/models/v1-5-pruned-emaonly.safetensors
+
+# Stable Diffusion 3 Medium (standalone)
+curl -L https://huggingface.co/leo009/stable-diffusion-3-medium/resolve/main/sd3_medium_incl_clips_t5xxlfp16.safetensors -o stable-diffusion.cpp/models/sd3_medium_incl_clips_t5xxlfp16.safetensors
+```
+
+Note: Model download may take a long time depending on your internet connection. The SDXL model is approximately 6GB, SD3 is about 13GB, SD1.5 is around 4GB, and Flux models are 8-13GB each.
+
 5. Update file paths in configuration: (this is fallback and you can always set ENV variable via the MCP json)
 
 Set shell script as Executable
