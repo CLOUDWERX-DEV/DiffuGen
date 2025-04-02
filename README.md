@@ -225,10 +225,10 @@ You can download the models from the following sources:
 mkdir -p stable-diffusion.cpp/models/flux
 
 # Flux models
-# Flux Schnell - Fast generation model (requires t5xxl, clip-l, vae)
+# Flux Schnell - Fast generation model (Q8 Quantized,requires t5xxl, clip-l, vae)
 curl -L https://huggingface.co/leejet/FLUX.1-schnell-gguf/resolve/main/flux1-schnell-q8_0.gguf -o stable-diffusion.cpp/models/flux/flux1-schnell-q8_0.gguf
 
-# Flux Dev - Development model with better quality (requires t5xxl, clip-l, vae)
+# Flux Dev - Development model with better quality (Q8 QUantized, requires t5xxl, clip-l, vae)
 curl -L https://huggingface.co/leejet/FLUX.1-dev-gguf/resolve/main/flux1-dev-q8_0.gguf -o stable-diffusion.cpp/models/flux/flux1-dev-q8_0.gguf
 
 # Required models for Flux
