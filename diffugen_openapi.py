@@ -60,33 +60,39 @@ def load_openapi_config():
     # Apply any environment variable overrides
     if "DIFFUGEN_OPENAPI_PORT" in os.environ:
         try:
-            config["server"]["port"] = int(os.environ["DIFFUGEN_OPENAPI_PORT"])
+            config["server"]["port"] = int(os.environ.get("DIFFUGEN_OPENAPI_PORT", config["server"]["port"]))
         except ValueError:
-            print(f"Invalid port in DIFFUGEN_OPENAPI_PORT: {os.environ['DIFFUGEN_OPENAPI_PORT']}")
+            print(f"Invalid port in DIFFUGEN_OPENAPI_PORT: {os.environ.get('DIFFUGEN_OPENAPI_PORT')}")
     
     if "SD_CPP_PATH" in os.environ:
-        config["paths"]["sd_cpp_path"] = os.environ["SD_CPP_PATH"]
+        config["paths"]["sd_cpp_path"] = os.environ.get("SD_CPP_PATH", config["paths"]["sd_cpp_path"])
     
     if "DIFFUGEN_OUTPUT_DIR" in os.environ:
-        config["paths"]["output_dir"] = os.environ["DIFFUGEN_OUTPUT_DIR"]
+        config["paths"]["output_dir"] = os.environ.get("DIFFUGEN_OUTPUT_DIR", config["paths"]["output_dir"])
     
     if "DIFFUGEN_CORS_ORIGINS" in os.environ:
-        config["cors"]["allow_origins"] = os.environ["DIFFUGEN_CORS_ORIGINS"].split(",")
+        config["cors"]["allow_origins"] = os.environ.get("DIFFUGEN_CORS_ORIGINS", "").split(",")
     
     if "DIFFUGEN_RATE_LIMIT" in os.environ:
-        config["rate_limiting"]["rate"] = os.environ["DIFFUGEN_RATE_LIMIT"]
+        config["rate_limiting"]["rate"] = os.environ.get("DIFFUGEN_RATE_LIMIT", config["rate_limiting"]["rate"])
     
     if "CUDA_VISIBLE_DEVICES" in os.environ:
-        config["env"]["CUDA_VISIBLE_DEVICES"] = os.environ["CUDA_VISIBLE_DEVICES"]
+        if "env" not in config:
+            config["env"] = {}
+        config["env"]["CUDA_VISIBLE_DEVICES"] = os.environ.get("CUDA_VISIBLE_DEVICES", "")
     
     if "VRAM_USAGE" in os.environ:
-        config["hardware"]["vram_usage"] = os.environ["VRAM_USAGE"]
+        if "hardware" not in config:
+            config["hardware"] = {}
+        config["hardware"]["vram_usage"] = os.environ.get("VRAM_USAGE", "")
     
     if "GPU_LAYERS" in os.environ:
+        if "hardware" not in config:
+            config["hardware"] = {}
         try:
-            config["hardware"]["gpu_layers"] = int(os.environ["GPU_LAYERS"])
+            config["hardware"]["gpu_layers"] = int(os.environ.get("GPU_LAYERS", 0))
         except ValueError:
-            print(f"Invalid GPU_LAYERS value: {os.environ['GPU_LAYERS']}")
+            print(f"Invalid GPU_LAYERS value: {os.environ.get('GPU_LAYERS')}")
     
     # Apply environment variables from config
     if "env" in config:

@@ -77,10 +77,10 @@ def load_config():
     
     # Try to read from environment variables first
     if "SD_CPP_PATH" in os.environ:
-        config["sd_cpp_path"] = os.path.normpath(os.environ["SD_CPP_PATH"])
+        config["sd_cpp_path"] = os.path.normpath(os.environ.get("SD_CPP_PATH", config["sd_cpp_path"]))
     
     if "DIFFUGEN_OUTPUT_DIR" in os.environ:
-        config["output_dir"] = os.path.normpath(os.environ["DIFFUGEN_OUTPUT_DIR"])
+        config["output_dir"] = os.path.normpath(os.environ.get("DIFFUGEN_OUTPUT_DIR", config["output_dir"]))
     
     # Try to read from diffugen.json configuration
     try:
