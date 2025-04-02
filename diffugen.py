@@ -145,81 +145,71 @@ def load_config():
         }
     }
     
-    # Try to read from environment variables first
+    # Try to read from environment variables first (highest priority)
     if "SD_CPP_PATH" in os.environ:
-        config["sd_cpp_path"] = os.path.normpath(os.environ.get("SD_CPP_PATH", config["sd_cpp_path"]))
+        config["sd_cpp_path"] = os.path.normpath(os.environ.get("SD_CPP_PATH"))
+        logging.info(f"Using SD_CPP_PATH from environment: {config['sd_cpp_path']}")
     
     if "DIFFUGEN_OUTPUT_DIR" in os.environ:
-        config["output_dir"] = os.path.normpath(os.environ.get("DIFFUGEN_OUTPUT_DIR", config["output_dir"]))
+        config["output_dir"] = os.path.normpath(os.environ.get("DIFFUGEN_OUTPUT_DIR"))
+        logging.info(f"Using output_dir from environment: {config['output_dir']}")
     
-    # Try to read from diffugen.json configuration
+    if "DIFFUGEN_DEFAULT_MODEL" in os.environ:
+        config["default_model"] = os.environ.get("DIFFUGEN_DEFAULT_MODEL")
+        logging.info(f"Using default_model from environment: {config['default_model']}")
+    
+    if "DIFFUGEN_VRAM_USAGE" in os.environ:
+        config["vram_usage"] = os.environ.get("DIFFUGEN_VRAM_USAGE")
+        logging.info(f"Using vram_usage from environment: {config['vram_usage']}")
+    
+    # Try to read from diffugen.json configuration (second priority)
     try:
         diffugen_json_path = os.path.join(os.getcwd(), "diffugen.json")
         if os.path.exists(diffugen_json_path):
             logging.info(f"Loading configuration from {diffugen_json_path}")
             with open(diffugen_json_path, 'r') as f:
                 diffugen_config = json.load(f)
-                # Update our config with values from diffugen.json config
-                for key, value in diffugen_config.items():
-                    config[key] = value
-                    logging.info(f"Loaded config setting from diffugen.json: {key}")
-            
-                # Extract default_params if they exist
+                
+                # Extract values from the mcpServers.diffugen structure
                 if 'mcpServers' in diffugen_config and 'diffugen' in diffugen_config.get('mcpServers', {}):
                     server_config = diffugen_config['mcpServers']['diffugen']
+                    
+                    # Extract environment variables
+                    if 'env' in server_config:
+                        env_vars = server_config['env']
+                        if 'SD_CPP_PATH' in env_vars and 'SD_CPP_PATH' not in os.environ:
+                            config['sd_cpp_path'] = os.path.normpath(env_vars['SD_CPP_PATH'])
+                            logging.info(f"Using sd_cpp_path from diffugen.json: {config['sd_cpp_path']}")
+                        
+                        if 'default_model' in env_vars and 'DIFFUGEN_DEFAULT_MODEL' not in os.environ:
+                            config['default_model'] = env_vars['default_model']
+                            logging.info(f"Using default_model from diffugen.json: {config['default_model']}")
+                    
+                    # Extract resources
+                    if 'resources' in server_config:
+                        resources = server_config['resources']
+                        if 'output_dir' in resources and 'DIFFUGEN_OUTPUT_DIR' not in os.environ:
+                            config['output_dir'] = os.path.normpath(resources['output_dir'])
+                            logging.info(f"Using output_dir from diffugen.json: {config['output_dir']}")
+                        
+                        if 'models_dir' in resources:
+                            config['models_dir'] = os.path.normpath(resources['models_dir'])
+                            logging.info(f"Using models_dir from diffugen.json: {config['models_dir']}")
+                        
+                        if 'vram_usage' in resources and 'DIFFUGEN_VRAM_USAGE' not in os.environ:
+                            config['vram_usage'] = resources['vram_usage']
+                            logging.info(f"Using vram_usage from diffugen.json: {config['vram_usage']}")
+                        
+                        if 'gpu_layers' in resources:
+                            config['gpu_layers'] = resources['gpu_layers']
+                            logging.info(f"Using gpu_layers from diffugen.json: {config['gpu_layers']}")
+                    
+                    # Extract default_params
                     if 'default_params' in server_config:
                         config['default_params'] = server_config['default_params']
                         logging.info("Loaded default_params from diffugen.json")
     except Exception as e:
         logging.warning(f"Error loading diffugen.json configuration: {e}")
-    
-    # Also check for Cursor MCP config
-    try:
-        cursor_mcp_path = os.path.join(os.path.expanduser("~"), ".cursor", "mcp.json")
-        if not os.path.exists(cursor_mcp_path):
-            cursor_mcp_path = os.path.join(os.getcwd(), ".cursor", "mcp.json")
-        
-        if os.path.exists(cursor_mcp_path):
-            logging.info(f"Loading configuration from {cursor_mcp_path}")
-            with open(cursor_mcp_path, 'r') as f:
-                cursor_config = json.load(f)
-                if ('mcpServers' in cursor_config and 
-                    'diffugen' in cursor_config.get('mcpServers', {})): 
-                    
-                    server_config = cursor_config['mcpServers']['diffugen']
-                    
-                    # Check for resources section
-                    if 'resources' in server_config:
-                        resources = server_config['resources']
-                        if 'output_dir' in resources:
-                            config['output_dir'] = os.path.normpath(resources['output_dir'])
-                            logging.info(f"Using output_dir from MCP config: {config['output_dir']}")
-                        if 'models_dir' in resources:
-                            config['models_dir'] = os.path.normpath(resources['models_dir'])
-                            logging.info(f"Using models_dir from MCP config: {config['models_dir']}")
-                        if 'vram_usage' in resources:
-                            config['vram_usage'] = resources['vram_usage']
-                            logging.info(f"Using vram_usage from MCP config: {config['vram_usage']}")
-                        if 'gpu_layers' in resources:
-                            config['gpu_layers'] = resources['gpu_layers']
-                            logging.info(f"Using gpu_layers from MCP config: {config['gpu_layers']}")
-                    
-                    # Look for default_params section
-                    if 'default_params' in server_config:
-                        config['default_params'] = server_config['default_params']
-                        logging.info("Loaded default_params from Cursor MCP config")
-                        
-                    # Look for SD_CPP_PATH in env variables section
-                    if 'env' in server_config and 'SD_CPP_PATH' in server_config['env']:
-                        config['sd_cpp_path'] = os.path.normpath(server_config['env']['SD_CPP_PATH'])
-                        logging.info(f"Using sd_cpp_path from MCP config: {config['sd_cpp_path']}")
-                        
-                    # Look for default_model in environment variables section
-                    if 'env' in server_config and 'default_model' in server_config['env']:
-                        config['default_model'] = server_config['env']['default_model']
-                        logging.info(f"Using default_model from MCP config: {config['default_model']}")
-    except Exception as e:
-        logging.warning(f"Error loading MCP configuration: {e}")
     
     # If models_dir wasn't set, use sd_cpp_path/models
     if not config["models_dir"]:

@@ -34,12 +34,11 @@
   - [Default Parameter Changes](#default-parameter-changes)
   - [Command Line Usage Notes](#command-line-usage-notes)
 - [Configuration](#️-configuration)
-  - [OpenAPI Server Configuration](#openapi-server-configuration)
-  - [OpenAPI Configuration File](#openapi-configuration-file)
-  - [MCP Configuration File Structure](#mcp-configuration-file-structure)
+  - [Configuration Approach](#configuration-approach)
+  - [Environment Variable Overrides](#environment-variable-overrides)
+  - [Setting IDE-Specific Configurations](#setting-ide-specific-configurations)
   - [Key Configuration Elements](#key-configuration-elements)
   - [IDE-Specific Options](#ide-specific-options)
-  - [Configuration File Locations](#configuration-file-locations)
   - [Customizing Default Parameters](#customizing-default-parameters)
   - [Updating Configuration Files](#updating-configuration-files)
 - [Advanced Usage](#-advanced-usage)
@@ -257,7 +256,7 @@ curl -L https://huggingface.co/leo009/stable-diffusion-3-medium/resolve/main/sd3
 
 Note: Model download may take a long time depending on your internet connection. The SDXL model is approximately 6GB, SD3 is about 13GB, SD1.5 is around 4GB, and Flux models are 8-13GB each.
 
-5. Update file paths in configuration: (this is fallback and you can always set ENV variable via the MCP json)
+5. Update file paths in configuration:
 
 Set shell script as Executable
 
@@ -265,28 +264,33 @@ Set shell script as Executable
 chmod +x diffugen.sh
 ```
 
-Edit the `diffugen.py` script to update the `sd_cpp_path` variable to point to your stable-diffusion.cpp installation directory:
+**Configuration Approach**:
+DiffuGen uses a single configuration file (`diffugen.json`) as the source of truth for all settings. The workflow is:
 
-```python
-# Example path update in diffugen.py
-sd_cpp_path = os.path.normpath("/full/path/to/DiffuGen/stable-diffusion.cpp")
-```
+1. Edit `diffugen.json` in the DiffuGen root directory with your desired settings
+2. Run option 5 in `setup_diffugen.sh` to automatically update paths in this file
+3. Copy the content of `diffugen.json` to your IDE's MCP configuration file
 
-6. Create an MCP configuration file to use with your IDE:
+The file contains all necessary settings:
+- File paths (command, SD_CPP_PATH, models_dir, output_dir)
+- Default model parameters (steps, cfg_scale, sampling_method)
+- VRAM usage settings
+- Metadata for IDE integration
 
 ```json
 {
   "mcpServers": {
     "diffugen": {
-      "command": "path/to/diffugen.sh",
+      "command": "/full/path/to/DiffuGen/diffugen.sh",
       "args": [],
       "env": {
         "CUDA_VISIBLE_DEVICES": "0",
-        "SD_CPP_PATH": "path/to/stable-diffusion.cpp"
+        "SD_CPP_PATH": "/full/path/to/DiffuGen/stable-diffusion.cpp",
+        "default_model": "flux-schnell"
       },
       "resources": {
-        "models_dir": "path/to/stable-diffusion.cpp/models",
-        "output_dir": "path/to/outputs",
+        "models_dir": "/full/path/to/DiffuGen/stable-diffusion.cpp/models",
+        "output_dir": "/full/path/to/DiffuGen/outputs",
         "vram_usage": "adaptive"
       },
       "metadata": {
@@ -342,7 +346,7 @@ sd_cpp_path = os.path.normpath("/full/path/to/DiffuGen/stable-diffusion.cpp")
 
 1. Download and install [Cursor](https://cursor.sh)
 2. Go to Cursor Settings > MCP and click "Add new global MCP server"
-3. Add the DiffuGen configuration to your `~/.cursor/mcp.json` file (see the MCP configuration above)
+3. **Copy the contents of your DiffuGen's `diffugen.json` file** and paste it into `~/.cursor/mcp.json`
 4. Refresh MCP Servers in Settings > MCP
 5. Use DiffuGen by opening the AI chat panel (Ctrl+K or Cmd+K) and requesting image generation
 
@@ -351,20 +355,20 @@ sd_cpp_path = os.path.normpath("/full/path/to/DiffuGen/stable-diffusion.cpp")
 1. Download and install [Windsurf](https://codeium.com/windsurf)
 2. Navigate to Windsurf > Settings > Advanced Settings or Command Palette > Open Windsurf Settings Page
 3. Scroll down to the Cascade section and click "Add Server" > "Add custom server +"
-4. Add the DiffuGen configuration to your `~/.codeium/windsurf/mcp_config.json` file
+4. **Copy the contents of your DiffuGen's `diffugen.json` file** and paste into `~/.codeium/windsurf/mcp_config.json`
 5. Use DiffuGen through the Cascade chat interface
 
 ### Setting up with Roo Code
 
 1. Download and install [Roo Code](https://roo.ai)
 2. Locate the MCP configuration file for Roo Code
-3. Add the DiffuGen configuration, adjusting paths to match your installation
+3. **Copy the contents of your DiffuGen's `diffugen.json` file** into Roo Code's MCP configuration
 4. Use DiffuGen through the AI assistant feature
 
 ### Setting up with Cline
 
 1. Download and install [Cline](https://cline.live)
-2. Add the DiffuGen configuration to Cline's MCP settings
+2. **Copy the contents of your DiffuGen's `diffugen.json` file** into Cline's MCP settings
 3. Use DiffuGen through the AI chat or command interface
 
 ### Setting up with Claude in Anthropic Console
@@ -609,96 +613,72 @@ When using the command line, you don't need to specify these parameters unless y
 
 ## ⚙️ Configuration
 
-DiffuGen provides a template JSON configuration file (`diffugen.json`) that defines server settings, environment variables, and resource paths. This template should be copied into your IDE's MCP configuration file. This section explains the various configuration options available.
+### Configuration Approach
 
-### OpenAPI Server Configuration
+DiffuGen uses a single configuration approach centered around the `diffugen.json` file:
 
-The OpenAPI server uses the same configuration as the main DiffuGen server, but with additional options:
-- Port configuration (default: 5199)
-- CORS settings
-- Rate limiting
+1. **Primary Configuration File**: `diffugen.json` in the DiffuGen root directory is the single source of truth for all settings
+2. **IDE Integration**: Copy the contents of `diffugen.json` to your IDE's MCP configuration file
+3. **Environment Variables**: For advanced usage, you can override settings with environment variables
 
-#### OpenAPI Configuration File
+### Environment Variable Overrides
 
-DiffuGen's OpenAPI server can be configured using a dedicated configuration file called `openapi_config.json`. This file provides detailed control over server behavior, model settings, and integration options.
+For advanced usage, you can override settings using environment variables:
 
-The configuration file is searched for in the following locations:
-1. `openapi_config.json` in the DiffuGen root directory
-2. Custom config file path specified with `--config` command line option
-3. Environment variables for specific settings
+- `SD_CPP_PATH`: Override the path to stable-diffusion.cpp
+- `DIFFUGEN_OUTPUT_DIR`: Override the output directory
+- `DIFFUGEN_DEFAULT_MODEL`: Override the default model
+- `DIFFUGEN_VRAM_USAGE`: Override VRAM usage settings
+- `CUDA_VISIBLE_DEVICES`: Control which GPUs are used for generation
 
-A typical OpenAPI configuration file includes sections for:
-- Server settings (host, port, debug mode)
-- Path configurations (models, outputs)
-- Hardware settings (VRAM usage, GPU layers)
-- CORS and security options
-- Default parameters for different models
-- Rate limiting configuration
+### Setting IDE-Specific Configurations
 
-Example OpenAPI configuration file:
+DiffuGen allows you to have different configurations for different IDEs by using environment variables in each IDE's MCP configuration. This lets you maintain a single base `diffugen.json` while customizing parameters per IDE.
+
+The configuration priority works as follows:
+1. Environment variables (highest priority)
+2. Settings from local `diffugen.json` file (base configuration)
+
+**Example: Different Output Directories for Different IDEs**
+
+For Cursor (in `~/.cursor/mcp.json`):
 ```json
-{
-  "server": {
-    "host": "0.0.0.0",
-    "port": 5199,
-    "debug": false
-  },
-  "paths": {
-    "sd_cpp_path": "stable-diffusion.cpp",
-    "models_dir": "stable-diffusion.cpp/models",
-    "output_dir": "outputs"
-  },
-  "hardware": {
-    "vram_usage": "adaptive",
-    "cuda_device": "0"
-  },
-  "cors": {
-    "allow_origins": ["*"]
-  },
+"env": {
+  "CUDA_VISIBLE_DEVICES": "0",
+  "SD_CPP_PATH": "/path/to/stable-diffusion.cpp",
+  "DIFFUGEN_OUTPUT_DIR": "/cursor/specific/output/directory",
   "default_model": "flux-schnell"
 }
 ```
 
-For complete details on all available configuration options, refer to the [OpenAPI Integration Guide](OPENAPI_SETUP.md).
-
-### MCP Configuration File Structure
-
-The MCP configuration file has the following structure:
-
+For Windsurf (in `~/.codeium/windsurf/mcp_config.json`):
 ```json
-{
-  "mcpServers": {
-    "diffugen": {
-      "command": "/path/to/diffugen.sh",
-      "args": [],
-      "env": {
-        "CUDA_VISIBLE_DEVICES": "0",
-        "SD_CPP_PATH": "/path/to/stable-diffusion.cpp"
-      },
-      "resources": {
-        "models_dir": "/path/to/stable-diffusion.cpp/models",
-        "output_dir": "/path/to/outputs",
-        "vram_usage": "adaptive"
-      },
-      "metadata": {
-        // metadata fields
-      },
-      "cursorOptions": {
-        // Cursor-specific options
-      },
-      "windsurfOptions": {
-        // Windsurf-specific options
-      }
-    }
-  }
+"env": {
+  "CUDA_VISIBLE_DEVICES": "0",
+  "SD_CPP_PATH": "/path/to/stable-diffusion.cpp",
+  "DIFFUGEN_OUTPUT_DIR": "/windsurf/specific/output/directory",
+  "default_model": "sdxl"
 }
 ```
+
+**Example: Different Default Models and VRAM Settings**
+
+```json
+"env": {
+  "CUDA_VISIBLE_DEVICES": "0",
+  "SD_CPP_PATH": "/path/to/stable-diffusion.cpp",
+  "default_model": "flux-dev", 
+  "DIFFUGEN_VRAM_USAGE": "maximum"
+}
+```
+
+This approach lets you customize DiffuGen's behavior per IDE while still using the same underlying installation.
 
 ### Key Configuration Elements
 
 #### Command and Arguments
 
-- **command**: Full path to the `diffugen.sh` script
+- **command**: Full path to the `diffugen.sh` script (must be absolute path)
 - **args**: Additional command-line arguments to pass to the script (usually left empty)
 
 #### Environment Variables
@@ -711,6 +691,8 @@ The MCP configuration file has the following structure:
 
 - **SD_CPP_PATH**: Path to the stable-diffusion.cpp installation directory
   - This is used to locate the stable-diffusion.cpp binary and models
+
+- **default_model**: The default model to use when none is specified
 
 #### Resource Configuration
 
@@ -728,6 +710,8 @@ The MCP configuration file has the following structure:
 
 ### IDE-Specific Options
 
+Each IDE has specific options you can customize in the `diffugen.json` file:
+
 #### Cursor Options
 
 ```json
@@ -739,11 +723,6 @@ The MCP configuration file has the following structure:
 }
 ```
 
-- **autoApprove**: Whether to automatically approve tool use without user confirmation
-- **category**: Category for grouping in the Cursor MCP tools list
-- **icon**: Emoji icon to display in the UI
-- **displayName**: Display name in the Cursor UI
-
 #### Windsurf Options
 
 ```json
@@ -754,29 +733,9 @@ The MCP configuration file has the following structure:
 }
 ```
 
-- **displayName**: Display name in the Windsurf UI
-- **icon**: Emoji icon to display in the UI
-- **category**: Category for grouping in the Windsurf tools list
-
-### Configuration File Locations
-
-There are two ways DiffuGen uses configuration:
-
-1. **Primary Method**: Copy the diffugen.json template into your IDE's MCP configuration file:
-   - Cursor: `~/.cursor/mcp.json`
-   - Windsurf: `~/.codeium/windsurf/mcp_config.json`
-   - Roo Code and Cline: Check IDE documentation for specific paths
-
-2. **Fallback Method**: DiffuGen will also look for configuration in these locations (in order):
-   - Environment variables (SD_CPP_PATH, DIFFUGEN_OUTPUT_DIR)
-   - Local `./diffugen.json` in the DiffuGen directory (as a fallback)
-   - IDE-specific MCP configuration files
-
-The recommended approach is to add DiffuGen's configuration to your IDE's MCP configuration file, as this is how the IDE will know how to launch and communicate with DiffuGen.
-
 ### Customizing Default Parameters
 
-You can customize default parameters for each model by adding a `default_params` section to your configuration:
+You can customize default parameters for each model in the `default_params` section:
 
 ```json
 "default_params": {
@@ -794,18 +753,16 @@ You can customize default parameters for each model by adding a `default_params`
 }
 ```
 
-This allows you to override the built-in defaults for specific models.
-
 ### Updating Configuration Files
 
-When using the automatic setup script, a template configuration file (diffugen.json) is created automatically with proper paths for your system. To integrate DiffuGen with your IDE:
+When using the automatic setup script, a properly configured `diffugen.json` file is created with the correct paths for your system when you run option 5. To integrate DiffuGen with your IDE:
 
-1. Copy the contents of the generated `diffugen.json` file
-2. Paste it into your IDE's MCP configuration file (e.g., `~/.cursor/mcp.json`)
-3. Verify that paths match your installation
+1. Run option 5 in `setup_diffugen.sh` to update paths in `diffugen.json`
+2. Copy the entire contents of the generated `diffugen.json` file
+3. Paste it into your IDE's MCP configuration file (e.g., `~/.cursor/mcp.json`)
 4. Restart your IDE to apply changes
 
-While DiffuGen can read from a local diffugen.json file as a fallback, the proper way to use DiffuGen is through your IDE's MCP integration, which requires adding the configuration to your IDE's MCP config file.
+The key advantage of this approach is a single source of truth for configuration, making it easier to maintain and update your DiffuGen setup.
 
 ## 📃 Advanced Usage
 
