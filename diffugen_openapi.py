@@ -4,7 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from fastapi.middleware import Middleware
 from pydantic import BaseModel, Field
-from typing import Optional, Dict, List, Union, Callable
+from typing import Optional, Dict, List, Union, Callable, Any
 import os
 import sys
 import json
@@ -15,6 +15,8 @@ from pathlib import Path
 from datetime import datetime
 from collections import defaultdict
 from itertools import chain
+import gc
+import uuid
 
 # Import DiffuGen functions
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -165,8 +167,64 @@ class RateLimitMiddleware:
         else:
             raise ValueError(f"Invalid time unit: {timeunit}")
         
-        # Rate limit storage
-        self.requests = defaultdict(list)
+        # Rate limit storage - use filesystem-based approach for better multi-process support
+        self.cache_dir = Path(os.path.join(os.getcwd(), ".rate_limit_cache"))
+        try:
+            os.makedirs(self.cache_dir, exist_ok=True)
+        except Exception as e:
+            print(f"Warning: Could not create rate limit cache directory: {e}")
+            print("Rate limiting will use in-memory storage and may not work correctly in multi-process deployments")
+            # Fallback to in-memory storage
+            self.requests = defaultdict(list)
+            self.use_filesystem = False
+        else:
+            self.use_filesystem = True
+    
+    def _get_cache_path(self, key):
+        """Get filesystem path for a rate limit key"""
+        # Create a safe filename from the key
+        safe_key = re.sub(r'[^\w]', '_', str(key))
+        return self.cache_dir / f"{safe_key}.json"
+    
+    def _read_requests(self, key):
+        """Read requests from filesystem for a key"""
+        if not self.use_filesystem:
+            return self.requests[key]
+            
+        cache_path = self._get_cache_path(key)
+        try:
+            if cache_path.exists():
+                with open(cache_path, 'r') as f:
+                    return json.load(f)
+            return []
+        except Exception as e:
+            print(f"Error reading rate limit cache: {e}")
+            return []
+    
+    def _write_requests(self, key, requests):
+        """Write requests to filesystem for a key"""
+        if not self.use_filesystem:
+            self.requests[key] = requests
+            return
+            
+        cache_path = self._get_cache_path(key)
+        try:
+            with open(cache_path, 'w') as f:
+                json.dump(requests, f)
+        except Exception as e:
+            print(f"Error writing rate limit cache: {e}")
+    
+    def _clean_old_requests(self, key):
+        """Clean up old requests for a key"""
+        now = time.time()
+        requests = self._read_requests(key)
+        updated_requests = [req_time for req_time in requests 
+                           if now - req_time < self.window_seconds]
+        
+        if len(updated_requests) != len(requests):
+            self._write_requests(key, updated_requests)
+        
+        return updated_requests
     
     async def __call__(self, scope, receive, send):
         if not self.enabled or scope["type"] != "http":
@@ -177,19 +235,17 @@ class RateLimitMiddleware:
         # Get the rate limit key (client IP by default)
         key = self.rate_limit_by_key(request)
         
-        # Clean up old requests
-        now = time.time()
-        self.requests[key] = [req_time for req_time in self.requests[key] 
-                              if now - req_time < self.window_seconds]
+        # Clean up old requests and get current ones
+        requests = self._clean_old_requests(key)
         
         # Check if rate limit is exceeded
-        if len(self.requests[key]) >= self.max_requests:
+        if len(requests) >= self.max_requests:
             # Create a response for rate limit exceeded
             headers = [
                 (b"content-type", b"application/json"),
                 (b"x-rate-limit-limit", str(self.max_requests).encode()),
                 (b"x-rate-limit-remaining", b"0"),
-                (b"x-rate-limit-reset", str(int(now + self.window_seconds)).encode()),
+                (b"x-rate-limit-reset", str(int(time.time() + self.window_seconds)).encode()),
             ]
             
             response = {
@@ -210,7 +266,9 @@ class RateLimitMiddleware:
             return
         
         # Record the request
-        self.requests[key].append(now)
+        now = time.time()
+        requests.append(now)
+        self._write_requests(key, requests)
         
         # Add rate limit headers to responses
         original_send = send
@@ -222,7 +280,7 @@ class RateLimitMiddleware:
                     (b"x-rate-limit-limit", str(self.max_requests).encode())
                 )
                 message["headers"].append(
-                    (b"x-rate-limit-remaining", str(self.max_requests - len(self.requests[key])).encode())
+                    (b"x-rate-limit-remaining", str(max(0, self.max_requests - len(requests))).encode())
                 )
                 message["headers"].append(
                     (b"x-rate-limit-reset", str(int(now + self.window_seconds)).encode())
@@ -283,8 +341,32 @@ app = FastAPI(
     middleware=middlewares
 )
 
-# Mount the output directory for serving generated images
-app.mount(config["images"]["serve_path"], StaticFiles(directory=str(DEFAULT_OUTPUT_DIR)), name="images")
+# Mount the output directory for serving generated images with proper cache control
+print(f"Mounting static files from {DEFAULT_OUTPUT_DIR.absolute()} at {config['images']['serve_path']}")
+app.mount(
+    config["images"]["serve_path"], 
+    StaticFiles(
+        directory=str(DEFAULT_OUTPUT_DIR.absolute()), 
+        check_dir=True,
+        html=False
+    ), 
+    name="images"
+)
+
+# Add middleware to set cache control headers
+@app.middleware("http")
+async def add_cache_control(request: Request, call_next):
+    response = await call_next(request)
+    
+    # Add cache control headers for image responses
+    if request.url.path.startswith(config["images"]["serve_path"]):
+        # Set strict no-cache headers for images to prevent browser caching
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+        print(f"Added no-cache headers for: {request.url.path}")
+    
+    return response
 
 # API Key security
 async def verify_api_key(x_api_key: Optional[str] = Header(None)):
@@ -358,14 +440,42 @@ async def list_images():
     """List all generated images"""
     try:
         images = []
+        # Log current paths for debugging
+        print(f"Looking for images in: {DEFAULT_OUTPUT_DIR} (absolute: {DEFAULT_OUTPUT_DIR.absolute()})")
+        print(f"Images path in server config: {config['images']['serve_path']}")
+        
+        # Use os.path.exists to verify directory accessibility
+        if not os.path.exists(DEFAULT_OUTPUT_DIR):
+            print(f"WARNING: Output directory does not exist or is not accessible: {DEFAULT_OUTPUT_DIR}")
+            os.makedirs(DEFAULT_OUTPUT_DIR, exist_ok=True)
+            print(f"Created output directory: {DEFAULT_OUTPUT_DIR}")
+        
+        # List all files in the directory to debug
+        existing_files = list(os.listdir(DEFAULT_OUTPUT_DIR))
+        print(f"Files in output directory: {existing_files}")
+        
         for file in chain(DEFAULT_OUTPUT_DIR.glob("*.[jp][pn][g]"), DEFAULT_OUTPUT_DIR.glob("*.jpeg")):
+            # Add extra verification that file really exists and is accessible
+            if not os.path.exists(file) or not os.access(str(file), os.R_OK):
+                print(f"WARNING: File listed but not accessible: {file}")
+                continue
+                
+            # Get absolute paths to ensure we're referencing the correct file
+            abs_path = os.path.abspath(file)
+            rel_path = f"{config['images']['serve_path']}/{file.name}"
+            
+            print(f"Found image: {file.name} at {abs_path}, serving at {rel_path}")
+            
             images.append({
                 "filename": file.name,
-                "path": f"{config['images']['serve_path']}/{file.name}",
+                "path": rel_path,
                 "created": datetime.fromtimestamp(file.stat().st_ctime).isoformat()
             })
+        
+        print(f"Total images found: {len(images)}")
         return {"images": images}
     except Exception as e:
+        print(f"ERROR in list_images: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # OpenAPI Tags Metadata
@@ -408,14 +518,33 @@ class ImageGenerationRequest(BaseModel):
         }
 
 class ImageGenerationResponse(BaseModel):
+    """Response for image generation"""
     success: bool
-    image_path: Optional[str] = None
-    image_url: Optional[str] = None
     error: Optional[str] = None
+    image_path: Optional[str] = None
+    image_url: Optional[str] = None  # Default to None to prevent client from trying to load an image when generation fails
+    markdown_response: str
     model: Optional[str] = None
     prompt: Optional[str] = None
-    parameters: Optional[dict] = None
-    markdown_response: Optional[str] = None  # This will be the primary way to display the image
+    parameters: Optional[Dict[str, Any]] = None
+
+# Add resource cleanup helper function
+def cleanup_resources():
+    """Basic cleanup to prevent hanging on subsequent requests (works on all platforms)"""
+    # Force garbage collection to clean up memory resources
+    gc.collect()
+    
+    # Verify the output directory exists and is accessible
+    try:
+        if not os.path.exists(DEFAULT_OUTPUT_DIR):
+            os.makedirs(DEFAULT_OUTPUT_DIR, exist_ok=True)
+            print(f"Recreated output directory at {DEFAULT_OUTPUT_DIR}")
+    except Exception as e:
+        print(f"Error verifying output directory: {e}")
+    
+    # Very brief pause to allow file handles to be released
+    # Keep this minimal to not impact user experience
+    time.sleep(0.05)
 
 @app.post("/generate/stable", 
     response_model=ImageGenerationResponse, 
@@ -440,6 +569,31 @@ async def generate_stable_image(request: ImageGenerationRequest, req: Request, a
             else:
                 # Otherwise, follow the original behavior of redirecting to flux
                 return await generate_flux_image_endpoint(request, req)
+        
+        # Validate model name before proceeding (prevent typos)
+        valid_models = ["sd15", "sdxl", "sd3"]
+        if request.model.lower() not in valid_models:
+            error_msg = f"Model {request.model} is not a valid Stable Diffusion model. Supported models are: {', '.join(valid_models)}"
+            print(f"Invalid model specified: {request.model}")
+            # Raise an HTTPException with 400 Bad Request
+            raise HTTPException(
+                status_code=400,
+                detail=error_msg
+            )
+        
+        # Force a random seed when the request appears to be a "make another" type request
+        # Look for patterns in the referer or request path that indicate this is a follow-up request
+        referer = req.headers.get("referer", "")
+        if "generate" in referer or req.url.path.endswith("/stable"):
+            # This looks like a follow-up request, force new random seed
+            request.seed = -1
+            
+        # Ensure resources are cleaned up before generating a new image    
+        cleanup_resources()
+        
+        abs_output_dir = os.path.abspath(str(DEFAULT_OUTPUT_DIR))
+        print(f"Using absolute output directory: {abs_output_dir}")
+        print(f"Output directory exists: {os.path.exists(abs_output_dir)}")
             
         result = generate_stable_diffusion_image(
             prompt=request.prompt,
@@ -451,21 +605,59 @@ async def generate_stable_image(request: ImageGenerationRequest, req: Request, a
             seed=request.seed,
             sampling_method=request.sampling_method,
             negative_prompt=request.negative_prompt,
-            output_dir=str(DEFAULT_OUTPUT_DIR)
+            output_dir=abs_output_dir
         )
         
         if not result.get("success", False):
             error_msg = result.get("error", "Unknown error")
-            return ImageGenerationResponse(
-                success=False,
-                error=error_msg,
-                markdown_response=f"Error generating image: {error_msg}"
+            print(f"Image generation failed: {error_msg}")
+            # Raise an HTTPException with 400 Bad Request
+            raise HTTPException(
+                status_code=400,
+                detail=error_msg
             )
             
         # Create full image URL including host
         image_path = Path(result["image_path"])
+        
+        # Print path information for debugging
+        print(f"Image path from generator: {image_path}")
+        print(f"Image path exists: {os.path.exists(image_path)}")
+        print(f"Image path size: {os.path.getsize(image_path) if os.path.exists(image_path) else 'N/A'}")
+        print(f"Image file name: {image_path.name}")
+        
+        # Stricter verification that the image file exists and is readable
+        # Wait a moment to ensure file operations are complete
+        # This helps fix the issue where the image is reported as created but not yet fully written
+        max_retries = 5
+        retry_delay = 0.5
+        for attempt in range(max_retries):
+            if os.path.exists(image_path) and os.access(str(image_path), os.R_OK) and os.path.getsize(image_path) > 0:
+                break
+            print(f"Waiting for image file to be available (attempt {attempt+1}/{max_retries}): {image_path}")
+            time.sleep(retry_delay)
+        
+        # Final verification check
+        if not (os.path.exists(image_path) and os.access(str(image_path), os.R_OK) and os.path.getsize(image_path) > 0):
+            error_msg = f"Generated image file not found or not readable at path: {image_path}"
+            print(f"ERROR: {error_msg}")
+            
+            # List files in output directory to see what's actually there
+            print(f"Files in output directory: {os.listdir(DEFAULT_OUTPUT_DIR)}")
+            
+            # Raise an HTTPException with 500 Internal Server Error
+            raise HTTPException(
+                status_code=500,
+                detail=error_msg
+            )
+            
+        # Add timestamp to prevent caching
+        timestamp = int(time.time())
         base_url = str(req.base_url).rstrip('/')
-        image_url = f"{base_url}{config['images']['serve_path']}/{image_path.name}"
+        file_name = os.path.basename(image_path)
+        image_url = f"{base_url}{config['images']['serve_path']}/{file_name}?t={timestamp}"
+        
+        print(f"Constructed image URL with timestamp: {image_url}")
         
         # Create markdown-formatted response
         markdown_response = f"Here's the image you requested:\n\n![Image]({image_url})\n\n**Generation Details:**\n- Model: {result['model']}\n- Prompt: {result['prompt']}\n- Resolution: {result['width']}x{result['height']} pixels\n- Steps: {result['steps']}\n- CFG Scale: {result['cfg_scale']}\n- Sampling Method: {result['sampling_method']}\n- Seed: {result['seed'] if result['seed'] != -1 else 'random'}"
@@ -487,12 +679,16 @@ async def generate_stable_image(request: ImageGenerationRequest, req: Request, a
                 "negative_prompt": result["negative_prompt"]
             }
         )
+    except HTTPException:
+        # Re-raise HTTP exceptions
+        raise
     except Exception as e:
         error_msg = str(e)
-        return ImageGenerationResponse(
-            success=False,
-            error=error_msg,
-            markdown_response=f"Error generating image: {error_msg}"
+        print(f"Unexpected error in generate_stable_image: {error_msg}")
+        # Raise an HTTPException with 500 Internal Server Error
+        raise HTTPException(
+            status_code=500,
+            detail=error_msg
         )
 
 @app.post("/generate/flux", 
@@ -507,6 +703,31 @@ async def generate_flux_image_endpoint(request: ImageGenerationRequest, req: Req
         if not request.model:
             request.model = "flux-schnell"
             
+        # Validate model name before proceeding
+        if request.model.lower() not in ["flux-schnell", "flux-dev"]:
+            error_msg = f"Model {request.model} is not a valid Flux model. Only flux-schnell and flux-dev are supported."
+            print(f"Invalid model specified: {request.model}")
+            # Raise an HTTPException with 400 Bad Request instead of returning a 200 OK
+            raise HTTPException(
+                status_code=400,
+                detail=error_msg
+            )
+            
+        # Force a random seed when the request appears to be a "make another" type request
+        # Look for patterns in the referer or request path that indicate this is a follow-up request
+        referer = req.headers.get("referer", "")
+        if "generate" in referer or req.url.path.endswith("/flux"):
+            # This looks like a follow-up request, force new random seed
+            request.seed = -1
+            
+        # Ensure resources are cleaned up before generating a new image
+        cleanup_resources()
+        
+        # Log the directory structure to debug path issues
+        abs_output_dir = os.path.abspath(str(DEFAULT_OUTPUT_DIR))
+        print(f"Using absolute output directory: {abs_output_dir}")
+        print(f"Output directory exists: {os.path.exists(abs_output_dir)}")
+            
         result = generate_flux_image(
             prompt=request.prompt,
             model=request.model,
@@ -516,21 +737,69 @@ async def generate_flux_image_endpoint(request: ImageGenerationRequest, req: Req
             cfg_scale=request.cfg_scale,
             seed=request.seed,
             sampling_method=request.sampling_method,
-            output_dir=str(DEFAULT_OUTPUT_DIR)
+            output_dir=abs_output_dir
         )
         
         if not result.get("success", False):
             error_msg = result.get("error", "Unknown error")
-            return ImageGenerationResponse(
-                success=False,
-                error=error_msg,
-                markdown_response=f"Error generating image: {error_msg}"
+            print(f"Image generation failed: {error_msg}")
+            # Raise an HTTPException with 400 Bad Request instead of returning a 200 OK
+            raise HTTPException(
+                status_code=400,
+                detail=error_msg
+            )
+            
+        # Get the image path from the result and ensure it's an absolute path
+        if "image_path" not in result:
+            print("ERROR: image_path missing from result")
+            # Raise an HTTPException with 500 Internal Server Error
+            raise HTTPException(
+                status_code=500,
+                detail="Image generation response missing image path"
             )
             
         # Create full image URL including host
         image_path = Path(result["image_path"])
+        
+        # Print path information for debugging
+        print(f"Image path from generator: {image_path}")
+        print(f"Image path exists: {os.path.exists(image_path)}")
+        print(f"Image path size: {os.path.getsize(image_path) if os.path.exists(image_path) else 'N/A'}")
+        print(f"Image file name: {image_path.name}")
+        
+        # Stricter verification that the image file exists and is readable
+        # Wait a moment to ensure file operations are complete
+        # This helps fix the issue where the image is reported as created but not yet fully written
+        max_retries = 5  # Increase retry attempts
+        retry_delay = 0.5
+        for attempt in range(max_retries):
+            if os.path.exists(image_path) and os.access(str(image_path), os.R_OK) and os.path.getsize(image_path) > 0:
+                break
+            print(f"Waiting for image file to be available (attempt {attempt+1}/{max_retries}): {image_path}")
+            time.sleep(retry_delay)
+        
+        # Final verification check
+        if not (os.path.exists(image_path) and os.access(str(image_path), os.R_OK) and os.path.getsize(image_path) > 0):
+            error_msg = f"Generated image file not found or not readable at path: {image_path}"
+            print(f"ERROR: {error_msg}")
+            
+            # List files in output directory to see what's actually there
+            print(f"Files in output directory: {os.listdir(DEFAULT_OUTPUT_DIR)}")
+            
+            # Raise an HTTPException with 500 Internal Server Error
+            raise HTTPException(
+                status_code=500,
+                detail=error_msg
+            )
+            
+        # Ensure we're calculating the relative URL path correctly
+        # Get just the filename and construct the URL path with a timestamp to prevent caching
+        timestamp = int(time.time())
         base_url = str(req.base_url).rstrip('/')
-        image_url = f"{base_url}{config['images']['serve_path']}/{image_path.name}"
+        file_name = os.path.basename(image_path)
+        image_url = f"{base_url}{config['images']['serve_path']}/{file_name}?t={timestamp}"
+        
+        print(f"Constructed image URL with timestamp: {image_url}")
         
         # Create markdown-formatted response
         markdown_response = f"Here's the image you requested:\n\n![Image]({image_url})\n\n**Generation Details:**\n- Model: {result['model']}\n- Prompt: {result['prompt']}\n- Resolution: {result['width']}x{result['height']} pixels\n- Steps: {result['steps']}\n- CFG Scale: {result['cfg_scale']}\n- Sampling Method: {result['sampling_method']}\n- Seed: {result['seed'] if result['seed'] != -1 else 'random'}"
@@ -551,12 +820,16 @@ async def generate_flux_image_endpoint(request: ImageGenerationRequest, req: Req
                 "sampling_method": result["sampling_method"]
             }
         )
+    except HTTPException:
+        # Re-raise HTTP exceptions
+        raise
     except Exception as e:
         error_msg = str(e)
-        return ImageGenerationResponse(
-            success=False,
-            error=error_msg,
-            markdown_response=f"Error generating image: {error_msg}"
+        print(f"Unexpected error in generate_flux_image_endpoint: {error_msg}")
+        # Raise an HTTPException with 500 Internal Server Error
+        raise HTTPException(
+            status_code=500,
+            detail=error_msg
         )
 
 @app.get("/models", 
@@ -619,6 +892,21 @@ async def generate_image(request: ImageGenerationRequest, req: Request, api_key:
     
     if request.height is None and "default_params" in config and "height" in config["default_params"]:
         request.height = config["default_params"]["height"]
+    
+    # Force a random seed for all requests to this unified endpoint
+    # This ensures "make another" requests always generate different images
+    request.seed = -1
+    
+    # Add a distinct client ID in the request headers to prevent client-side caching
+    # This works with the timestamp approach to ensure unique URLs for each request
+    client_id = str(uuid.uuid4())
+    req.headers.__dict__["_list"].append(
+        (b"x-diffugen-client-id", client_id.encode())
+    )
+    print(f"Added unique client ID to request: {client_id}")
+    
+    # Ensure resources are cleaned up before generating a new image
+    cleanup_resources()
     
     # If model is specified, route to appropriate endpoint
     if request.model:

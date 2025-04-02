@@ -7,6 +7,8 @@ import re
 import argparse
 import json
 from pathlib import Path
+import random
+import time
 
 # Simplified logging setup - log only essential info
 logging.basicConfig(
@@ -240,8 +242,8 @@ def generate_stable_diffusion_image(prompt: str, model: str = None, output_dir: 
         }
         
     # Sanitize the prompt to avoid command injection
-    sanitized_prompt = re.sub(r'[^\w\s\-\.,;:!?()]', '', prompt)
-    sanitized_negative = re.sub(r'[^\w\s\-\.,;:!?()]', '', negative_prompt) if negative_prompt else ""
+    sanitized_prompt = re.sub(r'[\\\'";`$|>&<\*\[\]\(\)\{\}\n\r\t\0]', '', prompt)
+    sanitized_negative = re.sub(r'[\\\'";`$|>&<\*\[\]\(\)\{\}\n\r\t\0]', '', negative_prompt) if negative_prompt else ""
     
     # Generate a unique filename for the output
     image_id = str(uuid.uuid4())[:8]
@@ -270,6 +272,12 @@ def generate_stable_diffusion_image(prompt: str, model: str = None, output_dir: 
     # Add seed if specified
     if seed >= 0:
         base_command.extend(["--seed", str(seed)])
+    else:
+        # Generate a truly random seed when seed is -1
+        random_seed = random.randint(0, 2147483647)  # Max 32-bit signed integer
+        base_command.extend(["--seed", str(random_seed)])
+        # Update the seed in the result so it can be reported correctly
+        seed = random_seed
     
     # Add negative prompt if provided
     if negative_prompt:
@@ -303,15 +311,44 @@ def generate_stable_diffusion_image(prompt: str, model: str = None, output_dir: 
                 base_command[i] = base_command[i].replace('/', '\\')
     
     try:
-        # Execute the command
+        # Execute the command with platform-specific optimizations
+        use_shell = False  # Avoid shell for security and cross-platform compatibility
+        
+        # Windows-specific process creation settings
+        creation_flags = 0
+        if os.name == 'nt':
+            creation_flags = subprocess.CREATE_NO_WINDOW
+        
         result = subprocess.run(
             base_command,
             check=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            text=True
+            text=True,
+            shell=use_shell,
+            creationflags=creation_flags if os.name == 'nt' else 0
         )
         
+        # Check if the output file was actually created and flush file system buffers
+        # This ensures the file is fully written and visible to other processes
+        if not os.path.exists(output_path) or os.path.getsize(output_path) == 0:
+            logging.error(f"Image generation subprocess completed successfully but output file was not created or is empty: {output_path}")
+            return {
+                "success": False,
+                "error": "Image generation completed but output file was not created or is empty",
+                "command": " ".join(base_command)
+            }
+        
+        # On Windows, try to ensure file operations are complete
+        if os.name == 'nt':
+            try:
+                # Open and close the file to ensure it's fully written
+                with open(output_path, 'rb') as f:
+                    # Just read a byte to verify the file is accessible
+                    f.read(1)
+            except Exception as file_e:
+                logging.error(f"Error verifying output file: {file_e}")
+                
         return {
             "success": True,
             "image_path": output_path,
@@ -327,13 +364,39 @@ def generate_stable_diffusion_image(prompt: str, model: str = None, output_dir: 
             "command": " ".join(base_command),
             "output": result.stdout
         }
-        
+    
     except subprocess.CalledProcessError as e:
+        error_msg = f"Process error (exit code {e.returncode}): {str(e)}"
+        logging.error(f"Image generation failed: {error_msg}")
+        logging.error(f"Command: {' '.join(base_command)}")
+        if e.stderr:
+            logging.error(f"Process stderr: {e.stderr}")
+        
         return {
             "success": False,
-            "error": str(e),
+            "error": error_msg,
             "stderr": e.stderr,
-            "command": " ".join(base_command)
+            "command": " ".join(base_command),
+            "exit_code": e.returncode
+        }
+    except FileNotFoundError as e:
+        error_msg = f"Binary not found at {base_command[0]}"
+        logging.error(f"Image generation failed: {error_msg}")
+        
+        return {
+            "success": False,
+            "error": error_msg,
+            "command": " ".join(base_command),
+        }
+    except Exception as e:
+        error_msg = f"Unexpected error: {str(e)}"
+        logging.error(f"Image generation failed with unexpected error: {error_msg}")
+        logging.error(f"Command: {' '.join(base_command)}")
+        
+        return {
+            "success": False,
+            "error": error_msg,
+            "command": " ".join(base_command),
         }
 
 @mcp.tool()
@@ -379,21 +442,39 @@ def generate_flux_image(prompt: str, output_dir: str = None, cfg_scale: float = 
             "error": f"Model {model} is not a Flux model. Only flux-schnell and flux-dev are supported by this tool."
         }
     
-    # If output_dir is None, use the default_output_dir
+    # Use absolute path for output directory to avoid path issues
     if output_dir is None:
         output_dir = default_output_dir
+    
+    # Ensure output directory is absolute path 
+    output_dir = os.path.abspath(output_dir)
+    
+    # Log information about paths for debugging
+    logging.info(f"Using output directory: {output_dir}")
+    logging.info(f"Current working directory: {os.getcwd()}")
         
     # Sanitize the prompt to avoid command injection
-    sanitized_prompt = re.sub(r'[^\w\s\-\.,;:!?()]', '', prompt)
+    sanitized_prompt = re.sub(r'[\\\'";`$|>&<\*\[\]\(\)\{\}\n\r\t\0]', '', prompt)
     
     # Generate a unique filename for the output
     image_id = str(uuid.uuid4())[:8]
     safe_name = re.sub(r'\W+', '_', sanitized_prompt)[:30]
     filename = f"{model}_{safe_name}_{image_id}.png"
     
-    # Determine output directory
-    os.makedirs(output_dir, exist_ok=True)
-    output_path = os.path.normpath(os.path.join(output_dir, filename))
+    # Determine output directory and create it if it doesn't exist
+    try:
+        os.makedirs(output_dir, exist_ok=True)
+        logging.info(f"Ensuring output directory exists: {output_dir}")
+    except Exception as e:
+        logging.error(f"Error creating output directory: {e}")
+        return {
+            "success": False,
+            "error": f"Failed to create output directory: {str(e)}"
+        }
+        
+    # Use absolute path for output file
+    output_path = os.path.abspath(os.path.join(output_dir, filename))
+    logging.info(f"Image will be saved to: {output_path}")
     
     # Base command with common arguments
     base_command = [
@@ -411,6 +492,12 @@ def generate_flux_image(prompt: str, output_dir: str = None, cfg_scale: float = 
     # Add seed if specified
     if seed >= 0:
         base_command.extend(["--seed", str(seed)])
+    else:
+        # Generate a truly random seed when seed is -1
+        random_seed = random.randint(0, 2147483647)  # Max 32-bit signed integer
+        base_command.extend(["--seed", str(random_seed)])
+        # Update the seed in the result so it can be reported correctly
+        seed = random_seed
     
     # Add model-specific arguments - lazy-loaded
     if model.lower() == "flux-schnell":
@@ -436,15 +523,90 @@ def generate_flux_image(prompt: str, output_dir: str = None, cfg_scale: float = 
                 base_command[i] = base_command[i].replace('/', '\\')
     
     try:
-        # Execute the command
+        # Execute the command with platform-specific optimizations
+        use_shell = False  # Avoid shell for security and cross-platform compatibility
+        
+        # Windows-specific process creation settings
+        creation_flags = 0
+        if os.name == 'nt':
+            creation_flags = subprocess.CREATE_NO_WINDOW
+        
+        # Log the command we're about to run
+        logging.info(f"Running command: {' '.join(base_command)}")
+        
         result = subprocess.run(
             base_command,
             check=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            text=True
+            text=True,
+            shell=use_shell,
+            creationflags=creation_flags if os.name == 'nt' else 0
         )
         
+        # Wait longer for file operations to complete
+        time.sleep(0.5)
+        
+        # Use os.path.exists instead of Path.exists for consistent behavior
+        # Check if the output file was actually created and has content
+        if not os.path.exists(output_path):
+            logging.error(f"Image generation subprocess completed but output file does not exist: {output_path}")
+            return {
+                "success": False,
+                "error": "Image generation completed but output file was not created",
+                "command": " ".join(base_command)
+            }
+            
+        # Check if the file has content
+        if os.path.getsize(output_path) == 0:
+            logging.error(f"Image generation subprocess completed but output file is empty: {output_path}")
+            return {
+                "success": False,
+                "error": "Image generation completed but output file is empty",
+                "command": " ".join(base_command)
+            }
+        
+        # Verify the file is readable
+        if not os.access(output_path, os.R_OK):
+            logging.error(f"Image generation subprocess completed but output file is not readable: {output_path}")
+            return {
+                "success": False,
+                "error": "Image generation completed but output file is not readable",
+                "command": " ".join(base_command)
+            }
+        
+        # On Windows or problematic filesystems, try to ensure file operations are complete
+        try:
+            # Open and close the file to ensure it's fully written
+            with open(output_path, 'rb') as f:
+                # Read the beginning of the file to verify it's a valid PNG
+                header = f.read(8)
+                if not header or len(header) < 8:
+                    logging.error(f"Generated file has invalid header: {output_path}")
+                    return {
+                        "success": False,
+                        "error": "Generated image file has invalid header or is corrupt",
+                        "command": " ".join(base_command)
+                    }
+        except Exception as file_e:
+            logging.error(f"Error verifying output file: {file_e}")
+            return {
+                "success": False,
+                "error": f"Error validating output file: {str(file_e)}",
+                "command": " ".join(base_command)
+            }
+            
+        # Final verification - double check the file still exists before returning
+        if not os.path.exists(output_path) or os.path.getsize(output_path) == 0:
+            logging.error(f"Final verification failed - file missing or empty: {output_path}")
+            return {
+                "success": False,
+                "error": "Final verification failed - file missing or empty",
+                "command": " ".join(base_command)
+            }
+        
+        logging.info(f"Successfully generated image at: {output_path} (size: {os.path.getsize(output_path)} bytes)")
+                
         return {
             "success": True,
             "image_path": output_path,
@@ -459,13 +621,39 @@ def generate_flux_image(prompt: str, output_dir: str = None, cfg_scale: float = 
             "command": " ".join(base_command),
             "output": result.stdout
         }
-        
+    
     except subprocess.CalledProcessError as e:
+        error_msg = f"Process error (exit code {e.returncode}): {str(e)}"
+        logging.error(f"Image generation failed: {error_msg}")
+        logging.error(f"Command: {' '.join(base_command)}")
+        if e.stderr:
+            logging.error(f"Process stderr: {e.stderr}")
+        
         return {
             "success": False,
-            "error": str(e),
+            "error": error_msg,
             "stderr": e.stderr,
-            "command": " ".join(base_command)
+            "command": " ".join(base_command),
+            "exit_code": e.returncode
+        }
+    except FileNotFoundError as e:
+        error_msg = f"Binary not found at {base_command[0]}"
+        logging.error(f"Image generation failed: {error_msg}")
+        
+        return {
+            "success": False,
+            "error": error_msg,
+            "command": " ".join(base_command),
+        }
+    except Exception as e:
+        error_msg = f"Unexpected error: {str(e)}"
+        logging.error(f"Image generation failed with unexpected error: {error_msg}")
+        logging.error(f"Command: {' '.join(base_command)}")
+        
+        return {
+            "success": False,
+            "error": error_msg,
+            "command": " ".join(base_command),
         }
 
 if __name__ == "__main__":

@@ -105,3 +105,4 @@ tests/
 tests/__pycache__/
 run_tests.sh
 test.yml
+.rate_limit_cache/
