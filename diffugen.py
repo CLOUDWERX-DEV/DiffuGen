@@ -9,6 +9,8 @@ import json
 from pathlib import Path
 import random
 import time
+import threading
+import atexit
 
 # Simplified logging setup - log only essential info
 logging.basicConfig(
@@ -16,6 +18,72 @@ logging.basicConfig(
     level=logging.INFO,  # Changed from DEBUG to INFO
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
+
+# Queue management system
+class GenerationQueue:
+    def __init__(self):
+        self.lock = threading.Lock()
+        self.is_busy = False
+        self.lock_file = os.path.join(os.getcwd(), "diffugen.lock")
+        # Clean up any stale lock on startup
+        self._remove_lock_file()
+        # Register cleanup on exit
+        atexit.register(self._remove_lock_file)
+    
+    def acquire(self, timeout=0):
+        """Try to acquire the lock for image generation.
+        Returns True if successful, False if busy."""
+        with self.lock:
+            # First check local thread lock
+            if self.is_busy:
+                logging.info("Image generation already in progress (local lock)")
+                return False
+                
+            # Then check file lock (for inter-process locking)
+            if os.path.exists(self.lock_file):
+                try:
+                    # Check if the lock file is stale (older than 30 minutes)
+                    lock_time = os.path.getmtime(self.lock_file)
+                    if time.time() - lock_time > 1800:  # 30 minutes
+                        logging.warning("Found stale lock file, removing it")
+                        self._remove_lock_file()
+                    else:
+                        with open(self.lock_file, 'r') as f:
+                            pid = f.read().strip()
+                        logging.info(f"Image generation already in progress by process {pid}")
+                        return False
+                except Exception as e:
+                    logging.error(f"Error checking lock file: {e}")
+                    return False
+            
+            # If we got here, no active generation is running
+            try:
+                with open(self.lock_file, 'w') as f:
+                    f.write(str(os.getpid()))
+                self.is_busy = True
+                logging.info(f"Acquired generation lock (PID: {os.getpid()})")
+                return True
+            except Exception as e:
+                logging.error(f"Error creating lock file: {e}")
+                return False
+    
+    def release(self):
+        """Release the generation lock."""
+        with self.lock:
+            self.is_busy = False
+            self._remove_lock_file()
+            logging.info("Released generation lock")
+    
+    def _remove_lock_file(self):
+        """Remove the lock file if it exists."""
+        try:
+            if os.path.exists(self.lock_file):
+                os.remove(self.lock_file)
+        except Exception as e:
+            logging.error(f"Error removing lock file: {e}")
+
+# Create global generation queue
+generation_queue = GenerationQueue()
 
 # Helper function to print to stderr
 def log_to_stderr(message):
@@ -202,9 +270,7 @@ def generate_stable_diffusion_image(prompt: str, model: str = None, output_dir: 
                                    width: int = None, height: int = None, steps: int = None, 
                                    cfg_scale: float = None, seed: int = -1, 
                                    sampling_method: str = None, negative_prompt: str = "") -> dict:
-    """
-    Generate an image using standard Stable Diffusion models (NOT Flux).
-    For Flux models (flux-schnell, flux-dev), use generate_flux_image instead.
+    """Generate an image using standard Stable Diffusion models (SDXL, SD3 or SD1.5)
     
     Args:
         prompt: The image description to generate
@@ -221,183 +287,203 @@ def generate_stable_diffusion_image(prompt: str, model: str = None, output_dir: 
     Returns:
         A dictionary containing the path to the generated image and the command used
     """
-    # Use configuration defaults if not provided, with sd15 as default for SD models
-    model = model or config["default_model"] or "sd15"
+    logging.info(f"Generate stable diffusion image request: prompt={prompt}, model={model}")
     
-    # For SD models, don't use flux models
-    if model.lower().startswith("flux-"):
-        model = "sd15"  # Default to sd15 if a flux model was selected
-    
-    width = width or config["default_params"]["width"]
-    height = height or config["default_params"]["height"]
-    sampling_method = sampling_method or get_default_sampling_method()
-    cfg_scale = cfg_scale or get_default_cfg_scale(model)
-    steps = steps or get_default_steps(model)
-    
-    # Validate that flux models are not used with this tool
-    if model.lower().startswith("flux-"):
+    # Use the generation queue to prevent concurrent generation
+    if not generation_queue.acquire():
         return {
             "success": False,
-            "error": f"Model {model} is a Flux model. Use generate_flux_image for Flux models."
+            "error": "Another image generation is already in progress. Please try again when the current generation completes."
         }
-        
-    # Sanitize the prompt to avoid command injection
-    sanitized_prompt = re.sub(r'[\\\'";`$|>&<\*\[\]\(\)\{\}\n\r\t\0]', '', prompt)
-    sanitized_negative = re.sub(r'[\\\'";`$|>&<\*\[\]\(\)\{\}\n\r\t\0]', '', negative_prompt) if negative_prompt else ""
-    
-    # Generate a unique filename for the output
-    image_id = str(uuid.uuid4())[:8]
-    safe_name = re.sub(r'\W+', '_', sanitized_prompt)[:30]
-    filename = f"{model}_{safe_name}_{image_id}.png"
-    
-    # Determine output directory
-    if not output_dir:
-        output_dir = default_output_dir
-    os.makedirs(output_dir, exist_ok=True)
-    output_path = os.path.normpath(os.path.join(output_dir, filename))
-    
-    # Base command with common arguments
-    base_command = [
-        os.path.normpath(os.path.join(sd_cpp_path, "build", "bin", "sd")),
-        "-p", sanitized_prompt,
-        "--cfg-scale", str(cfg_scale),
-        "--sampling-method", sampling_method,
-        "--steps", str(steps),
-        "-H", str(height),
-        "-W", str(width),
-        "-o", output_path,
-        "--diffusion-fa"
-    ]
-    
-    # Add seed if specified
-    if seed >= 0:
-        base_command.extend(["--seed", str(seed)])
-    else:
-        # Generate a truly random seed when seed is -1
-        random_seed = random.randint(0, 2147483647)  # Max 32-bit signed integer
-        base_command.extend(["--seed", str(random_seed)])
-        # Update the seed in the result so it can be reported correctly
-        seed = random_seed
-    
-    # Add negative prompt if provided
-    if negative_prompt:
-        base_command.extend(["-n", sanitized_negative])
-    
-    # Add model-specific arguments using lazy-loaded paths
-    if model.lower() == "sdxl":
-        base_command.extend([
-            "-m", get_model_path("sdxl"),
-            "--vae", get_supporting_file("sdxl_vae")
-        ])
-    elif model.lower() == "sd3":
-        base_command.extend([
-            "-m", get_model_path("sd3")
-        ])
-    elif model.lower() == "sd15":
-        base_command.extend([
-            "-m", get_model_path("sd15")
-        ])
-    else:
-        # Default to SD15 if model not recognized
-        base_command.extend([
-            "-m", get_model_path("sd15")
-        ])
-    
-    # Detect platform and adjust paths if needed
-    if os.name == 'nt':  # Windows
-        base_command[0] = base_command[0].replace('/', '\\')
-        for i in range(len(base_command)):
-            if isinstance(base_command[i], str):
-                base_command[i] = base_command[i].replace('/', '\\')
     
     try:
-        # Execute the command with platform-specific optimizations
-        use_shell = False  # Avoid shell for security and cross-platform compatibility
+        # Sanitize prompt and negative prompt
+        sanitized_prompt = re.sub(r'[^\w\s.,;:!?\'"-]+', '', prompt).strip()
+        sanitized_negative_prompt = negative_prompt
+        if negative_prompt:
+            sanitized_negative_prompt = re.sub(r'[^\w\s.,;:!?\'"-]+', '', negative_prompt).strip()
+            
+        # Select appropriate model
+        if not model:
+            model = "sd15"  # Default to SD1.5
         
-        # Windows-specific process creation settings
-        creation_flags = 0
-        if os.name == 'nt':
-            creation_flags = subprocess.CREATE_NO_WINDOW
+        model = model.lower()
         
-        result = subprocess.run(
-            base_command,
-            check=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            shell=use_shell,
-            creationflags=creation_flags if os.name == 'nt' else 0
-        )
+        # Only allow SD models in this function
+        if model.startswith("flux-"):
+            error_msg = f"Please use generate_flux_image for Flux models (received {model})"
+            logging.error(error_msg)
+            return {"success": False, "error": error_msg}
+            
+        # Normalize model name
+        if model in ["sdxl", "sdxl-1.0", "sdxl1.0"]:
+            model = "sdxl"
+        elif model in ["sd3", "sd3-medium"]:
+            model = "sd3"
+        elif model in ["sd15", "sd1.5", "sd-1.5"]:
+            model = "sd15"
         
-        # Check if the output file was actually created and flush file system buffers
-        # This ensures the file is fully written and visible to other processes
-        if not os.path.exists(output_path) or os.path.getsize(output_path) == 0:
-            logging.error(f"Image generation subprocess completed successfully but output file was not created or is empty: {output_path}")
+        # Use default parameters if not specified
+        if width is None:
+            width = config["default_params"]["width"]
+        
+        if height is None:
+            height = config["default_params"]["height"]
+            
+        if steps is None:
+            steps = get_default_steps(model)
+            
+        if cfg_scale is None:
+            cfg_scale = get_default_cfg_scale(model)
+            
+        if sampling_method is None:
+            sampling_method = get_default_sampling_method()
+        
+        if output_dir is None:
+            output_dir = default_output_dir
+            
+        # Ensure output directory exists
+        os.makedirs(output_dir, exist_ok=True)
+            
+        # Get model path
+        model_path = get_model_path(model)
+        if not model_path:
+            error_msg = f"Model not found: {model}"
+            logging.error(error_msg)
+            return {"success": False, "error": error_msg}
+        
+        # Generate a random seed if not provided
+        if seed == -1:
+            seed = random.randint(1, 1000000000)
+            
+        # Create output filename
+        sanitized_prompt_for_filename = re.sub(r'[^\w\s]+', '', sanitized_prompt).strip()
+        sanitized_prompt_for_filename = re.sub(r'\s+', '_', sanitized_prompt_for_filename)
+        truncated_prompt = sanitized_prompt_for_filename[:20].lower()  # Limit to 20 chars
+        unique_id = uuid.uuid4().hex[:8]
+        output_filename = f"{model}_{truncated_prompt}_{unique_id}.png"
+        output_path = os.path.join(output_dir, output_filename)
+            
+        # Prepare command for sd.cpp
+        bin_path = os.path.join(sd_cpp_path, "build", "bin", "sd")
+        
+        base_command = [
+            bin_path,
+            "-p", sanitized_prompt
+        ]
+        
+        # Add negative prompt if provided
+        if sanitized_negative_prompt:
+            base_command.extend(["--negative-prompt", sanitized_negative_prompt])
+            
+        # Add remaining parameters
+        base_command.extend([
+            "--cfg-scale", str(cfg_scale),
+            "--sampling-method", sampling_method,
+            "--steps", str(steps),
+            "-H", str(height),
+            "-W", str(width),
+            "-o", output_path,
+            "--seed", str(seed)
+        ])
+        
+        # Add model-specific paths
+        base_command.extend(["--diffusion-model", model_path])
+        
+        # Get supporting files
+        vae_path = get_supporting_file("vae")
+        clip_path = get_supporting_file("clip")
+        clip_l_path = get_supporting_file("clip_l")
+        t5xxl_path = get_supporting_file("t5xxl")
+        
+        if vae_path:
+            base_command.extend(["--vae", vae_path])
+        
+        if model == "sdxl":
+            if clip_path and t5xxl_path:
+                base_command.extend(["--clip", clip_path])
+                base_command.extend(["--t5xxl", t5xxl_path])
+        elif model == "sd15":
+            if clip_path:
+                base_command.extend(["--clip", clip_path])
+                
+        # Add GPU and memory usage settings
+        if config["vram_usage"] != "adaptive":
+            base_command.append(f"--{config['vram_usage']}")
+            
+        if config["gpu_layers"] != -1:
+            base_command.extend(["--gpu-layer", str(config["gpu_layers"])])
+        
+        try:
+            # Run the command
+            logging.info(f"Running command: {' '.join(base_command)}")
+            
+            result = subprocess.run(
+                base_command,
+                check=True,
+                capture_output=True,
+                text=True
+            )
+            
+            logging.info(f"Successfully generated image at: {output_path} (size: {os.path.getsize(output_path)} bytes)")
+            
+            # Format the response to match OpenAPI style
+            image_description = "Image of " + sanitized_prompt[:50] + ("..." if len(sanitized_prompt) > 50 else "")
+            
+            markdown_response = f"Here's the image you requested:\n\n{image_description}\n\n**Generation Details:**\n\nModel: {model}\nResolution: {width}x{height} pixels\nSteps: {steps}\nCFG Scale: {cfg_scale}\nSampling Method: {sampling_method}\nSeed: {seed}\nThis image was generated based on your prompt {sanitized_prompt}. Let me know if you'd like adjustments!"
+            
             return {
-                "success": False,
-                "error": "Image generation completed but output file was not created or is empty",
-                "command": " ".join(base_command)
+                "success": True,
+                "image_path": output_path,
+                "prompt": sanitized_prompt,
+                "model": model,
+                "width": width,
+                "height": height,
+                "steps": steps,
+                "cfg_scale": cfg_scale,
+                "seed": seed,
+                "sampling_method": sampling_method,
+                "command": " ".join(base_command),
+                "output": result.stdout,
+                "markdown_response": markdown_response
             }
         
-        # On Windows, try to ensure file operations are complete
-        if os.name == 'nt':
-            try:
-                # Open and close the file to ensure it's fully written
-                with open(output_path, 'rb') as f:
-                    # Just read a byte to verify the file is accessible
-                    f.read(1)
-            except Exception as file_e:
-                logging.error(f"Error verifying output file: {file_e}")
-                
-        return {
-            "success": True,
-            "image_path": output_path,
-            "prompt": sanitized_prompt,
-            "model": model,
-            "width": width,
-            "height": height,
-            "steps": steps,
-            "cfg_scale": cfg_scale,
-            "seed": seed,
-            "sampling_method": sampling_method,
-            "negative_prompt": sanitized_negative if negative_prompt else None,
-            "command": " ".join(base_command),
-            "output": result.stdout
-        }
-    
-    except subprocess.CalledProcessError as e:
-        error_msg = f"Process error (exit code {e.returncode}): {str(e)}"
-        logging.error(f"Image generation failed: {error_msg}")
-        logging.error(f"Command: {' '.join(base_command)}")
-        if e.stderr:
-            logging.error(f"Process stderr: {e.stderr}")
-        
-        return {
-            "success": False,
-            "error": error_msg,
-            "stderr": e.stderr,
-            "command": " ".join(base_command),
-            "exit_code": e.returncode
-        }
-    except FileNotFoundError as e:
-        error_msg = f"Binary not found at {base_command[0]}"
-        logging.error(f"Image generation failed: {error_msg}")
-        
-        return {
-            "success": False,
-            "error": error_msg,
-            "command": " ".join(base_command),
-        }
-    except Exception as e:
-        error_msg = f"Unexpected error: {str(e)}"
-        logging.error(f"Image generation failed with unexpected error: {error_msg}")
-        logging.error(f"Command: {' '.join(base_command)}")
-        
-        return {
-            "success": False,
-            "error": error_msg,
-            "command": " ".join(base_command),
-        }
+        except subprocess.CalledProcessError as e:
+            error_msg = f"Process error (exit code {e.returncode}): {str(e)}"
+            logging.error(f"Image generation failed: {error_msg}")
+            logging.error(f"Command: {' '.join(base_command)}")
+            if e.stderr:
+                logging.error(f"Process stderr: {e.stderr}")
+            
+            return {
+                "success": False,
+                "error": error_msg,
+                "stderr": e.stderr,
+                "command": " ".join(base_command),
+                "exit_code": e.returncode
+            }
+        except FileNotFoundError as e:
+            error_msg = f"Binary not found at {base_command[0]}"
+            logging.error(f"Image generation failed: {error_msg}")
+            
+            return {
+                "success": False,
+                "error": error_msg,
+                "command": " ".join(base_command),
+            }
+        except Exception as e:
+            error_msg = f"Unexpected error: {str(e)}"
+            logging.error(f"Image generation failed with unexpected error: {error_msg}")
+            logging.error(f"Command: {' '.join(base_command)}")
+            
+            return {
+                "success": False,
+                "error": error_msg,
+                "command": " ".join(base_command),
+            }
+    finally:
+        # Always release the lock when done
+        generation_queue.release()
 
 @mcp.tool()
 def generate_flux_image(prompt: str, output_dir: str = None, cfg_scale: float = None, 
@@ -422,239 +508,192 @@ def generate_flux_image(prompt: str, output_dir: str = None, cfg_scale: float = 
     Returns:
         A dictionary containing the path to the generated image and the command used
     """
-    # Use configuration defaults if not provided, with flux-schnell as fallback for Flux models
-    model = model or config["default_model"] or "flux-schnell"
+    logging.info(f"Generate flux image request: prompt={prompt}, model={model}")
     
-    # If a non-flux model was specified, default to flux-schnell
-    if not model.lower().startswith("flux-"):
-        model = "flux-schnell"
-        
-    width = width or config["default_params"]["width"]
-    height = height or config["default_params"]["height"]
-    sampling_method = sampling_method or get_default_sampling_method()
-    cfg_scale = cfg_scale or get_default_cfg_scale(model)
-    steps = steps or get_default_steps(model)
-    
-    # Validate that only flux models are used with this tool
-    if model.lower() not in ["flux-schnell", "flux-dev"]:
+    # Use the generation queue to prevent concurrent generation
+    if not generation_queue.acquire():
         return {
             "success": False,
-            "error": f"Model {model} is not a Flux model. Only flux-schnell and flux-dev are supported by this tool."
+            "error": "Another image generation is already in progress. Please try again when the current generation completes."
         }
     
-    # Use absolute path for output directory to avoid path issues
-    if output_dir is None:
-        output_dir = default_output_dir
-    
-    # Ensure output directory is absolute path 
-    output_dir = os.path.abspath(output_dir)
-    
-    # Log information about paths for debugging
-    logging.info(f"Using output directory: {output_dir}")
-    logging.info(f"Current working directory: {os.getcwd()}")
-        
-    # Sanitize the prompt to avoid command injection
-    sanitized_prompt = re.sub(r'[\\\'";`$|>&<\*\[\]\(\)\{\}\n\r\t\0]', '', prompt)
-    
-    # Generate a unique filename for the output
-    image_id = str(uuid.uuid4())[:8]
-    safe_name = re.sub(r'\W+', '_', sanitized_prompt)[:30]
-    filename = f"{model}_{safe_name}_{image_id}.png"
-    
-    # Determine output directory and create it if it doesn't exist
     try:
+        # Sanitize prompt
+        sanitized_prompt = re.sub(r'[^\w\s.,;:!?\'"-]+', '', prompt).strip()
+            
+        # Select appropriate model
+        if not model:
+            model = "flux-schnell"  # Default to flux-schnell
+        
+        model = model.lower()
+        
+        # Only allow Flux models in this function
+        if not model.startswith("flux-"):
+            # If the user specified an SD model, suggest using the other function
+            if model in ["sdxl", "sd3", "sd15", "sd1.5"]:
+                error_msg = f"Please use generate_stable_diffusion_image for standard SD models (received {model})"
+            else:
+                error_msg = f"Invalid model: {model}. For Flux image generation, use 'flux-schnell' or 'flux-dev'"
+            logging.error(error_msg)
+            return {"success": False, "error": error_msg}
+            
+        # Normalize model name
+        if model in ["flux-schnell", "flux_schnell", "fluxschnell", "flux1-schnell"]:
+            model = "flux-schnell"
+        elif model in ["flux-dev", "flux_dev", "fluxdev", "flux1-dev"]:
+            model = "flux-dev"
+        
+        # Use default parameters if not specified
+        if width is None:
+            width = config["default_params"]["width"]
+        
+        if height is None:
+            height = config["default_params"]["height"]
+            
+        if steps is None:
+            steps = get_default_steps(model)
+            
+        if cfg_scale is None:
+            cfg_scale = get_default_cfg_scale(model)
+            
+        if sampling_method is None:
+            sampling_method = get_default_sampling_method()
+        
+        if output_dir is None:
+            output_dir = default_output_dir
+            
+        # Ensure output directory exists
         os.makedirs(output_dir, exist_ok=True)
-        logging.info(f"Ensuring output directory exists: {output_dir}")
-    except Exception as e:
-        logging.error(f"Error creating output directory: {e}")
-        return {
-            "success": False,
-            "error": f"Failed to create output directory: {str(e)}"
-        }
-        
-    # Use absolute path for output file
-    output_path = os.path.abspath(os.path.join(output_dir, filename))
-    logging.info(f"Image will be saved to: {output_path}")
-    
-    # Base command with common arguments
-    base_command = [
-        os.path.normpath(os.path.join(sd_cpp_path, "build", "bin", "sd")),
-        "-p", sanitized_prompt,
-        "--cfg-scale", str(cfg_scale),
-        "--sampling-method", sampling_method,
-        "--steps", str(steps),
-        "-H", str(height),
-        "-W", str(width),
-        "-o", output_path,
-        "--diffusion-fa"
-    ]
-    
-    # Add seed if specified
-    if seed >= 0:
-        base_command.extend(["--seed", str(seed)])
-    else:
-        # Generate a truly random seed when seed is -1
-        random_seed = random.randint(0, 2147483647)  # Max 32-bit signed integer
-        base_command.extend(["--seed", str(random_seed)])
-        # Update the seed in the result so it can be reported correctly
-        seed = random_seed
-    
-    # Add model-specific arguments - lazy-loaded
-    if model.lower() == "flux-schnell":
-        base_command.extend([
-            "--diffusion-model", get_model_path("flux-schnell"),
-            "--vae", get_supporting_file("vae"),
-            "--clip_l", get_supporting_file("clip_l"),
-            "--t5xxl", get_supporting_file("t5xxl")
-        ])
-    elif model.lower() == "flux-dev":
-        base_command.extend([
-            "--diffusion-model", get_model_path("flux-dev"),
-            "--vae", get_supporting_file("vae"),
-            "--clip_l", get_supporting_file("clip_l"),
-            "--t5xxl", get_supporting_file("t5xxl")
-        ])
-    
-    # Detect platform and adjust paths if needed
-    if os.name == 'nt':  # Windows
-        base_command[0] = base_command[0].replace('/', '\\')
-        for i in range(len(base_command)):
-            if isinstance(base_command[i], str):
-                base_command[i] = base_command[i].replace('/', '\\')
-    
-    try:
-        # Execute the command with platform-specific optimizations
-        use_shell = False  # Avoid shell for security and cross-platform compatibility
-        
-        # Windows-specific process creation settings
-        creation_flags = 0
-        if os.name == 'nt':
-            creation_flags = subprocess.CREATE_NO_WINDOW
-        
-        # Log the command we're about to run
-        logging.info(f"Running command: {' '.join(base_command)}")
-        
-        result = subprocess.run(
-            base_command,
-            check=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            shell=use_shell,
-            creationflags=creation_flags if os.name == 'nt' else 0
-        )
-        
-        # Wait longer for file operations to complete
-        time.sleep(0.5)
-        
-        # Use os.path.exists instead of Path.exists for consistent behavior
-        # Check if the output file was actually created and has content
-        if not os.path.exists(output_path):
-            logging.error(f"Image generation subprocess completed but output file does not exist: {output_path}")
-            return {
-                "success": False,
-                "error": "Image generation completed but output file was not created",
-                "command": " ".join(base_command)
-            }
             
-        # Check if the file has content
-        if os.path.getsize(output_path) == 0:
-            logging.error(f"Image generation subprocess completed but output file is empty: {output_path}")
-            return {
-                "success": False,
-                "error": "Image generation completed but output file is empty",
-                "command": " ".join(base_command)
-            }
+        # Get model path
+        model_path = get_model_path(model)
+        if not model_path:
+            error_msg = f"Model not found: {model}"
+            logging.error(error_msg)
+            return {"success": False, "error": error_msg}
         
-        # Verify the file is readable
-        if not os.access(output_path, os.R_OK):
-            logging.error(f"Image generation subprocess completed but output file is not readable: {output_path}")
-            return {
-                "success": False,
-                "error": "Image generation completed but output file is not readable",
-                "command": " ".join(base_command)
-            }
+        # Generate a random seed if not provided
+        if seed == -1:
+            seed = random.randint(1, 1000000000)
+            
+        # Create output filename
+        sanitized_prompt_for_filename = re.sub(r'[^\w\s]+', '', sanitized_prompt).strip()
+        sanitized_prompt_for_filename = re.sub(r'\s+', '_', sanitized_prompt_for_filename)
+        truncated_prompt = sanitized_prompt_for_filename[:20].lower()  # Limit to 20 chars
+        unique_id = uuid.uuid4().hex[:8]
+        output_filename = f"{model}_{truncated_prompt}_{unique_id}.png"
+        output_path = os.path.join(output_dir, output_filename)
+            
+        # Prepare command for sd.cpp
+        bin_path = os.path.join(sd_cpp_path, "build", "bin", "sd")
         
-        # On Windows or problematic filesystems, try to ensure file operations are complete
+        base_command = [
+            bin_path,
+            "-p", sanitized_prompt,
+            "--cfg-scale", str(cfg_scale),
+            "--sampling-method", sampling_method,
+            "--steps", str(steps),
+            "-H", str(height),
+            "-W", str(width),
+            "-o", output_path,
+            "--diffusion-fa",  # Add Flux-specific flag
+            "--seed", str(seed)
+        ]
+        
+        # Add model-specific paths
+        base_command.extend(["--diffusion-model", model_path])
+        
+        # Get supporting files for Flux
+        vae_path = get_supporting_file("vae")
+        clip_l_path = get_supporting_file("clip_l")
+        t5xxl_path = get_supporting_file("t5xxl")
+        
+        if vae_path:
+            base_command.extend(["--vae", vae_path])
+        
+        if clip_l_path:
+            base_command.extend(["--clip_l", clip_l_path])
+            
+        if t5xxl_path:
+            base_command.extend(["--t5xxl", t5xxl_path])
+        
+        # Add GPU and memory usage settings
+        if config["vram_usage"] != "adaptive":
+            base_command.append(f"--{config['vram_usage']}")
+            
+        if config["gpu_layers"] != -1:
+            base_command.extend(["--gpu-layer", str(config["gpu_layers"])])
+        
         try:
-            # Open and close the file to ensure it's fully written
-            with open(output_path, 'rb') as f:
-                # Read the beginning of the file to verify it's a valid PNG
-                header = f.read(8)
-                if not header or len(header) < 8:
-                    logging.error(f"Generated file has invalid header: {output_path}")
-                    return {
-                        "success": False,
-                        "error": "Generated image file has invalid header or is corrupt",
-                        "command": " ".join(base_command)
-                    }
-        except Exception as file_e:
-            logging.error(f"Error verifying output file: {file_e}")
-            return {
-                "success": False,
-                "error": f"Error validating output file: {str(file_e)}",
-                "command": " ".join(base_command)
-            }
+            # Run the command
+            logging.info(f"Running command: {' '.join(base_command)}")
             
-        # Final verification - double check the file still exists before returning
-        if not os.path.exists(output_path) or os.path.getsize(output_path) == 0:
-            logging.error(f"Final verification failed - file missing or empty: {output_path}")
+            result = subprocess.run(
+                base_command,
+                check=True,
+                capture_output=True,
+                text=True
+            )
+            
+            logging.info(f"Successfully generated image at: {output_path} (size: {os.path.getsize(output_path)} bytes)")
+            
+            # Format the response to match OpenAPI style
+            image_description = "Image of " + sanitized_prompt[:50] + ("..." if len(sanitized_prompt) > 50 else "")
+            
+            markdown_response = f"Here's the image you requested:\n\n{image_description}\n\n**Generation Details:**\n\nModel: {model}\nResolution: {width}x{height} pixels\nSteps: {steps}\nCFG Scale: {cfg_scale}\nSampling Method: {sampling_method}\nSeed: {seed}\nThis image was generated based on your prompt {sanitized_prompt}. Let me know if you'd like adjustments!"
+            
             return {
-                "success": False,
-                "error": "Final verification failed - file missing or empty",
-                "command": " ".join(base_command)
+                "success": True,
+                "image_path": output_path,
+                "prompt": sanitized_prompt,
+                "model": model,
+                "width": width,
+                "height": height,
+                "steps": steps,
+                "cfg_scale": cfg_scale,
+                "seed": seed,
+                "sampling_method": sampling_method,
+                "command": " ".join(base_command),
+                "output": result.stdout,
+                "markdown_response": markdown_response
             }
         
-        logging.info(f"Successfully generated image at: {output_path} (size: {os.path.getsize(output_path)} bytes)")
-                
-        return {
-            "success": True,
-            "image_path": output_path,
-            "prompt": sanitized_prompt,
-            "model": model,
-            "width": width,
-            "height": height,
-            "steps": steps,
-            "cfg_scale": cfg_scale,
-            "seed": seed,
-            "sampling_method": sampling_method,
-            "command": " ".join(base_command),
-            "output": result.stdout
-        }
-    
-    except subprocess.CalledProcessError as e:
-        error_msg = f"Process error (exit code {e.returncode}): {str(e)}"
-        logging.error(f"Image generation failed: {error_msg}")
-        logging.error(f"Command: {' '.join(base_command)}")
-        if e.stderr:
-            logging.error(f"Process stderr: {e.stderr}")
-        
-        return {
-            "success": False,
-            "error": error_msg,
-            "stderr": e.stderr,
-            "command": " ".join(base_command),
-            "exit_code": e.returncode
-        }
-    except FileNotFoundError as e:
-        error_msg = f"Binary not found at {base_command[0]}"
-        logging.error(f"Image generation failed: {error_msg}")
-        
-        return {
-            "success": False,
-            "error": error_msg,
-            "command": " ".join(base_command),
-        }
-    except Exception as e:
-        error_msg = f"Unexpected error: {str(e)}"
-        logging.error(f"Image generation failed with unexpected error: {error_msg}")
-        logging.error(f"Command: {' '.join(base_command)}")
-        
-        return {
-            "success": False,
-            "error": error_msg,
-            "command": " ".join(base_command),
-        }
+        except subprocess.CalledProcessError as e:
+            error_msg = f"Process error (exit code {e.returncode}): {str(e)}"
+            logging.error(f"Image generation failed: {error_msg}")
+            logging.error(f"Command: {' '.join(base_command)}")
+            if e.stderr:
+                logging.error(f"Process stderr: {e.stderr}")
+            
+            return {
+                "success": False,
+                "error": error_msg,
+                "stderr": e.stderr,
+                "command": " ".join(base_command),
+                "exit_code": e.returncode
+            }
+        except FileNotFoundError as e:
+            error_msg = f"Binary not found at {base_command[0]}"
+            logging.error(f"Image generation failed: {error_msg}")
+            
+            return {
+                "success": False,
+                "error": error_msg,
+                "command": " ".join(base_command),
+            }
+        except Exception as e:
+            error_msg = f"Unexpected error: {str(e)}"
+            logging.error(f"Image generation failed with unexpected error: {error_msg}")
+            logging.error(f"Command: {' '.join(base_command)}")
+            
+            return {
+                "success": False,
+                "error": error_msg,
+                "command": " ".join(base_command),
+            }
+    finally:
+        # Always release the lock when done
+        generation_queue.release()
 
 if __name__ == "__main__":
     try:
