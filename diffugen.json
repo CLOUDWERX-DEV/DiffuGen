@@ -1,7 +1,7 @@
 {
   "mcpServers": {
     "diffugen": {
-      "command": "/home/cloudwerxlab/Desktop/Servers/MCP/Tools/DiffuGen/diffugen.sh",
+      "command": "/path/to/diffugen.sh",
       "args": [],
       "env": {
         "CUDA_VISIBLE_DEVICES": "0",
