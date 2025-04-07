@@ -325,7 +325,7 @@ def generate_stable_diffusion_image(prompt: str, model: str = None, output_dir: 
         cfg_scale: CFG scale parameter
         seed: Seed for reproducibility (-1 for random)
         sampling_method: Sampling method (euler, euler_a, heun, dpm2, dpm++2s_a, dpm++2m, dpm++2mv2, lcm)
-        negative_prompt: Negative prompt (for supported models)
+        negative_prompt: Negative prompt (for SD models ONLY)
         
     Returns:
         A dictionary containing the path to the generated image and the command used
@@ -540,7 +540,7 @@ def generate_flux_image(prompt: str, output_dir: str = None, cfg_scale: float = 
     Args:
         prompt: The image description to generate
         model: Flux model to use (only "flux-schnell" or "flux-dev" are supported)
-        output_dir: Directory to save the image (defaults to current directory)
+        output_dir: Directory to save the image
         cfg_scale: CFG scale parameter (default: 1.0 for all flux models)
         sampling_method: Sampling method to use (default: euler)
         steps: Number of diffusion steps (default: 8 for flux-schnell, 20 for flux-dev)
@@ -743,7 +743,7 @@ if __name__ == "__main__":
         # Check if command line arguments are provided for direct image generation
         if len(sys.argv) > 1:
             # Parse command line arguments
-            parser = argparse.ArgumentParser(description="Generate images using Stable Diffusion")
+            parser = argparse.ArgumentParser(description="Generate SD\FLux Images")
             parser.add_argument("prompt", type=str, help="The image description to generate")
             parser.add_argument("--model", type=str, 
                                 help="Model to use (flux-schnell, flux-dev, sdxl, sd3, sd15)")
@@ -802,7 +802,7 @@ if __name__ == "__main__":
                     output_dir=args.output_dir
                 )
             else:
-                log_to_stderr(f"Generating standard image with model: {args.model}")
+                log_to_stderr(f"Generating SD image with model: {args.model}")
                 result = generate_stable_diffusion_image(
                     prompt=args.prompt,
                     model=args.model,

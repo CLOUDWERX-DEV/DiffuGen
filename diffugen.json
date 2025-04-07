@@ -1,7 +1,11 @@
 {
   "mcpServers": {
     "diffugen": {
+<<<<<<< HEAD
       "command": "/path/to/diffugen.sh",
+=======
+      "command": "path/to/diffugen.sh",
+>>>>>>> 4bd8ca3 (Update command path in diffugen.json and clarify documentation in diffugen.py)
       "args": [],
       "env": {
         "CUDA_VISIBLE_DEVICES": "0",
